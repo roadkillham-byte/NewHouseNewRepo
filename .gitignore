@@ -24,7 +24,21 @@ coverage/
 .npm/
 *.tsbuildinfo
 
-# Python
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+
+# Vercel
+.vercel
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Python (kept in case tooling scripts are added later)
 __pycache__/
 *.py[cod]
 .venv/

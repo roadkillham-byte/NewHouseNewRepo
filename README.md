@@ -1,30 +1,54 @@
-# NewHouseNewRepo
+# House OS
 
-A new project. The stack has not been chosen yet.
+A share-house operations app for four housemates: assignable/recurring
+chores on a calendar, a bill due-date and payment tracker, and a
+furniture/move-in status board — all pointing at one daily dashboard.
 
-## Status
+**Status:** Phase 0 (foundation) complete — auth, database schema, and the
+app shell exist. Chores, bills, furniture, the dashboard, and settlement are
+still being built; see `CLAUDE.md` for the phase plan.
 
-Freshly initialized. The repository currently contains project scaffolding
-only — no application code.
+## Stack
+
+Next.js 16 (App Router) + TypeScript, Tailwind v4 + shadcn/ui, Drizzle ORM
+over Postgres (Supabase), Auth.js v5, `rrule` for recurrence, Vitest +
+Playwright for tests. Deployed on Vercel.
 
 ## Getting started
 
-Clone the repo and create a branch for your work:
-
 ```sh
-git clone git@github.com:roadkillham-byte/NewHouseNewRepo.git
-cd NewHouseNewRepo
-git checkout -b my-change
+npm install
+cp .env.example .env.local   # fill in a real Supabase DATABASE_URL + AUTH_SECRET
+npm run db:migrate           # once schema.ts has an actual migration generated
+npm run db:seed              # edit the household/member list in src/db/seed.ts first
+npm run dev
 ```
 
-Once a language and toolchain are picked, this section should be replaced with
-the real install, build, test, and run commands.
+Generate `AUTH_SECRET` with `npx auth secret`. `.env.local` is gitignored —
+never commit real credentials.
+
+## Commands
+
+See the Commands table in `CLAUDE.md` for the full list (lint, typecheck,
+unit tests, E2E, Drizzle Studio, etc).
 
 ## Layout
 
 ```
 .
-├── CLAUDE.md     Notes for Claude Code sessions
-├── README.md     This file
-└── .gitignore    Ignore rules (editor, OS, and common toolchain output)
+├── CLAUDE.md            Guidance and conventions for AI coding sessions
+├── proxy.ts              Route-gating (formerly "middleware") — session check only
+├── drizzle.config.ts     Drizzle Kit config (migrations)
+├── playwright.config.ts  E2E test config
+├── vitest.config.ts      Unit test config
+├── src/
+│   ├── app/
+│   │   ├── (app)/         Authenticated routes — dashboard, chores, bills, furniture
+│   │   ├── login/         Public sign-in page
+│   │   └── api/auth/      Auth.js route handler
+│   ├── components/       Shared UI (nav, module cards) and components/ui (shadcn)
+│   ├── db/               Drizzle schema, client, and seed script
+│   ├── lib/               auth.ts / auth.config.ts, money.ts, recurrence.ts, split.ts
+│   └── types/             Type augmentations (Auth.js session shape)
+└── e2e/                  Playwright specs
 ```
