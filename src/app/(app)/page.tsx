@@ -1,39 +1,88 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { ModuleCard } from "@/components/module-card";
+import { startOfUtcDay } from "@/lib/materialise";
+import {
+  getHouseStats,
+  getOutstandingChores,
+  getPersonalBalance,
+  getRecentActivity,
+  getUpcomingBills,
+} from "@/db/queries/dashboard";
+import { BillCheckpoint } from "./bill-checkpoint";
+import { ChoreCheckpoint } from "./chore-checkpoint";
+import { RecentActivity } from "./recent-activity";
+import { StatTiles } from "./stat-tiles";
+
+const BILL_HORIZON_DAYS = 14;
+const ACTIVITY_WINDOW_DAYS = 7;
 
 export default async function DashboardPage() {
   const session = await auth();
-  const firstName = (session?.user?.name ?? "there").split(" ")[0];
+  if (!session?.user) redirect("/login");
+  const { householdId, id: memberId } = session.user;
+
+  const today = startOfUtcDay(new Date());
+  const firstName = (session.user.name ?? "there").split(" ")[0];
+
+  const [chores, upcomingBills, personalOwedCents, stats, activity] = await Promise.all([
+    getOutstandingChores(householdId, today),
+    getUpcomingBills(householdId, today, BILL_HORIZON_DAYS),
+    getPersonalBalance(memberId),
+    getHouseStats(householdId, today),
+    getRecentActivity(householdId, today, ACTIVITY_WINDOW_DAYS),
+  ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {firstName}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {greeting()}, {firstName}
+        </h1>
         <p className="text-muted-foreground">
-          This will become the daily checkpoint — today&apos;s chores, bills due soon, and
-          what you owe — once Phase 1&ndash;4 land.
+          {today.toLocaleDateString("en-AU", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+          {" · "}
+          {summaryLine(stats.choresPendingCount, personalOwedCents)}
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <ModuleCard
-          title="Chores"
-          description="Assign, rotate, and track household chores on a shared calendar."
-          status="Coming in Phase 1"
-          href="/chores"
-        />
-        <ModuleCard
-          title="Bills"
-          description="Track due dates, split amounts, and who's paid their share."
-          status="Coming in Phase 2"
-          href="/bills"
-        />
-        <ModuleCard
-          title="Furniture"
-          description="What the house needs, has, and has spent on furnishing it."
-          status="Coming in Phase 3"
-          href="/furniture"
-        />
+
+      <StatTiles
+        choresPendingCount={stats.choresPendingCount}
+        unpaidShareCount={stats.unpaidShareCount}
+        unpaidTotalCents={stats.unpaidTotalCents}
+        furnitureNeededCount={stats.furnitureNeededCount}
+        personalOwedCents={personalOwedCents}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <ChoreCheckpoint chores={chores} today={today} currentMemberId={memberId} />
+          <BillCheckpoint periods={upcomingBills} today={today} currentMemberId={memberId} />
+        </div>
+        <div>
+          <RecentActivity rows={activity} />
+        </div>
       </div>
     </div>
   );
+}
+
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function summaryLine(choresPending: number, owedCents: number): string {
+  if (choresPending === 0 && owedCents === 0) return "nothing needs you right now";
+  const parts: string[] = [];
+  if (choresPending > 0) {
+    parts.push(`${choresPending} chore${choresPending === 1 ? "" : "s"} outstanding`);
+  }
+  if (owedCents > 0) parts.push("money owed");
+  return parts.join(", ");
 }

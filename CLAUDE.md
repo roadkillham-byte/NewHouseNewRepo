@@ -25,16 +25,22 @@ floats. `src/lib/money.ts` is the only place currency is formatted/parsed;
 `src/lib/split.ts` is the only place a bill total is divided across people.
 Don't do either conversion inline elsewhere.
 
-**Build status:** Phases 0–3 are done. Phase 0: foundation. Phase 1:
-chores — recurring/one-off definitions, month calendar, today's list,
-round-robin rotation, fairness ledger, move-in checklist. Phase 2: bills —
-fixed and variable-amount bills, a due-date timeline, even-split shares,
-mark-as-paid with a ledger audit trail, live-computed overdue/due-today
-status, and per-person outstanding balances. Phase 3: furniture — a
-four-column status board, room grouping, budget roll-up, and split
-contributions. All verified end-to-end against a real local Postgres, not
-just unit tests. Dashboard and settlement are Phases 4–5 — see the plan
-file.
+**Build status:** All five planned phases are done. Phase 0: foundation.
+Phase 1: chores — recurring/one-off definitions, month calendar, today's
+list, round-robin rotation, fairness ledger, move-in checklist. Phase 2:
+bills — fixed and variable-amount bills, a due-date timeline, even-split
+shares, mark-as-paid with a ledger audit trail, live-computed
+overdue/due-today status, per-person outstanding balances. Phase 3:
+furniture — four-column status board, room grouping, budget roll-up, split
+contributions. Phase 4: dashboard — stat tiles, chore/bill checkpoints
+actionable inline, recent-activity feed. Phase 5: settle up —
+ledger-backed net positions and minimal transfers. All verified end-to-end
+against a real local Postgres, not just unit tests.
+
+The daily *email* digest from the original plan is **not** built — the
+in-app dashboard covers the checkpoint need, and email needs a provider
+decision (Resend/Postmark) plus per-member opt-in that nobody has asked
+for yet.
 
 ## Commands
 
@@ -94,6 +100,14 @@ re-run after editing.
   real `<button>` — omitting it throws a console error at runtime that
   `next build` won't catch. `Checkbox`/`Select` do participate in native
   `<form>` submission (a hidden mirrored input), same as Radix.
+- **`src/lib/settlement.ts`**: `computeNetPositions()` splits the
+  `ledger_entries` pot evenly and returns each member's net;
+  `computeTransfers()` greedily matches largest creditor to largest debtor,
+  yielding at most n-1 payments. Both pure and unit-tested (nets always sum
+  to zero, no self-payments, sub-tolerance residue never emits a 1c
+  transfer). The settle page reads only from `ledger_entries` — never from
+  `bill_shares`/`furniture_contributions` directly — which is why every
+  action that records money writes a ledger row.
 - **Pure logic lives in `src/lib/`, never in `src/db/queries/`.** Anything
   importable from `src/db/` evaluates the Postgres client at module load and
   throws without a real `DATABASE_URL` — so a pure function parked in a
