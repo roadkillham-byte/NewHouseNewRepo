@@ -5,11 +5,13 @@ declare module "next-auth" {
     user: {
       id: string;
       avatarColor?: string;
+      householdId: string;
     } & DefaultSession["user"];
   }
 
   interface User {
     avatarColor?: string;
+    householdId?: string;
   }
 }
 
@@ -17,5 +19,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     avatarColor?: string;
+    householdId?: string;
   }
 }

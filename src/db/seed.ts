@@ -12,10 +12,19 @@
  * this script with a new password for just that member, or updating the row
  * directly).
  */
-import "dotenv/config";
+import { config } from "dotenv";
+
+// Loaded explicitly, same as drizzle.config.ts — this runs via tsx, not
+// Next.js, so it doesn't get Next's automatic .env.local loading. This must
+// happen before ./index is evaluated (it reads DATABASE_URL at module load
+// time), so ./index is imported dynamically below, after config() has run —
+// a static top-level `import { db } from "./index"` here would load before
+// these config() calls regardless of where it's written in the file.
+config({ path: ".env.local" });
+config();
+
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db } from "./index";
 import { households, members } from "./schema";
 
 const HOUSEHOLD_NAME = "The House";
@@ -30,6 +39,8 @@ const SEED_MEMBERS = [
 const AVATAR_COLORS = ["#6366f1", "#ec4899", "#22c55e", "#f59e0b"];
 
 async function main() {
+  const { db } = await import("./index");
+
   let [household] = await db
     .select()
     .from(households)

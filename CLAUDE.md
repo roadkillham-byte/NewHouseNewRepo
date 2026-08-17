@@ -25,9 +25,11 @@ floats. `src/lib/money.ts` is the only place currency is formatted/parsed;
 `src/lib/split.ts` is the only place a bill total is divided across people.
 Don't do either conversion inline elsewhere.
 
-**Build status:** Phase 0 (foundation: auth, schema, app shell) is done.
-Chores, bills, furniture, dashboard, and settlement are Phases 1–5 — see the
-plan file. Module pages currently show a "coming in Phase N" placeholder.
+**Build status:** Phase 0 (foundation) and Phase 1 (chores) are done —
+recurring/one-off chore definitions, a month calendar, today's list,
+round-robin rotation, the fairness ledger, and the move-in checklist, all
+verified end-to-end against a real local Postgres. Bills, furniture,
+dashboard, and settlement are Phases 2–5 — see the plan file.
 
 ## Commands
 
@@ -79,6 +81,53 @@ re-run after editing.
 - Forms use Next.js Server Actions with native `<form>` elements + Zod
   validation, not `react-hook-form` — simpler and idiomatic for the App
   Router; shadcn's `form` block was deliberately not installed.
+- shadcn/ui here is built on `@base-ui/react`, not Radix — two gotchas that
+  aren't obvious from shadcn's own docs (which assume Radix): composing
+  `Button`/`DialogTrigger`/etc. with a non-button child (e.g. `next/link`)
+  uses a `render={<Link>...</Link>}` prop, not `asChild`, and `Button`
+  additionally needs `nativeButton={false}` when its `render` target isn't a
+  real `<button>` — omitting it throws a console error at runtime that
+  `next build` won't catch. `Checkbox`/`Select` do participate in native
+  `<form>` submission (a hidden mirrored input), same as Radix.
+- **`src/lib/materialise.ts`** turns chore definitions into `chore_instances`
+  — idempotent (safe to re-run), continues round-robin rotation across
+  materialise runs by reading the most recent existing instance rather than
+  storing rotation state separately. `src/app/(app)/chores/actions.ts`
+  calls it after create/update so instances appear immediately instead of
+  waiting for the next cron tick. Editing a recurring chore's schedule
+  clears *future pending* instances before re-materialising — done/skipped
+  history is never touched. `src/db/queries/chores.ts` holds the read-side
+  joins (today's list, calendar range, fairness ledger, move-in checklist).
+
+## Verifying against a real database
+
+Sandboxed dev environments often have `postgresql-16` preinstalled but not
+running. To get a real local Postgres for verification (migrations,
+seeding, actually exercising server actions — not just unit tests):
+
+```sh
+service postgresql start
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+sudo -u postgres psql -c "CREATE DATABASE houseos_dev;"
+# then set DATABASE_URL="postgresql://postgres:postgres@localhost:5432/houseos_dev"
+# in .env.local, npm run db:migrate, npm run db:seed, npm run dev
+```
+
+`npm run build` alone doesn't need a live connection (the Postgres client is
+lazy — it only connects on first query), so a syntactically-valid but
+unreachable `DATABASE_URL` is enough for build verification. But anything
+that actually queries — server actions, the materialise engine, an E2E
+login — needs the real thing above; don't declare a data-touching change
+verified from a green build alone.
+
+## Cron
+
+`vercel.json` schedules `/api/cron/materialise` for `0 14 * * *` (14:00 UTC)
+as a placeholder — adjust to whenever the house wants its daily rollover to
+happen in its own timezone. Vercel automatically attaches
+`Authorization: Bearer $CRON_SECRET` to its own cron-triggered requests once
+`CRON_SECRET` is set as a project environment variable; the route checks
+that header itself, so no extra Vercel config is needed beyond the env var.
 
 ## Known non-blocking issue
 

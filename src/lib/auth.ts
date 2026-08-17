@@ -42,6 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: member.name,
           email: member.email,
           avatarColor: member.avatarColor,
+          householdId: member.householdId,
         };
       },
     }),
@@ -52,6 +53,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id as string;
         token.avatarColor = (user as { avatarColor?: string }).avatarColor;
+        token.householdId = (user as { householdId?: string }).householdId;
       }
       return token;
     },
@@ -59,6 +61,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.avatarColor = token.avatarColor as string | undefined;
+        session.user.householdId = token.householdId as string;
       }
       return session;
     },

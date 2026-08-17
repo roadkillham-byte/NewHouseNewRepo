@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { describeRule, expandRule, nextRoundRobinAssignee, validateRule } from "./recurrence";
+import {
+  buildRRule,
+  describeRule,
+  expandRule,
+  nextRoundRobinAssignee,
+  parseRRuleToInput,
+  validateRule,
+} from "./recurrence";
 
 const utc = (y: number, m: number, d: number) => new Date(Date.UTC(y, m - 1, d));
 const iso = (dates: Date[]) => dates.map((d) => d.toISOString().slice(0, 10));
@@ -167,5 +174,80 @@ describe("nextRoundRobinAssignee", () => {
     expect(Math.max(...activeCounts) - Math.min(...activeCounts)).toBeLessThanOrEqual(1);
     // No turns are lost: total assignments still equals the number of cycles.
     expect(Object.values(counts).reduce((s, n) => s + n, 0)).toBe(100);
+  });
+});
+
+describe("buildRRule", () => {
+  it("returns null for a one-off task", () => {
+    expect(buildRRule({ frequency: "once" })).toBeNull();
+  });
+
+  it("builds a daily rule with a default interval of 1", () => {
+    expect(buildRRule({ frequency: "daily" })).toBe("RRULE:FREQ=DAILY;INTERVAL=1");
+  });
+
+  it("builds an every-N-days rule", () => {
+    expect(buildRRule({ frequency: "daily", interval: 3 })).toBe("RRULE:FREQ=DAILY;INTERVAL=3");
+  });
+
+  it("builds a weekly rule with specific days", () => {
+    // Monday (0) and Wednesday (2)
+    const rule = buildRRule({ frequency: "weekly", daysOfWeek: [0, 2] });
+    expect(rule).toBe("RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE");
+  });
+
+  it("builds a fortnightly rule", () => {
+    const rule = buildRRule({ frequency: "weekly", interval: 2, daysOfWeek: [4] });
+    expect(rule).toBe("RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR");
+  });
+
+  it("builds a monthly rule on a specific day", () => {
+    const rule = buildRRule({ frequency: "monthly", dayOfMonth: 15 });
+    expect(rule).toBe("RRULE:FREQ=MONTHLY;INTERVAL=1;BYMONTHDAY=15");
+  });
+
+  it("throws for weekly with no days selected", () => {
+    expect(() => buildRRule({ frequency: "weekly", daysOfWeek: [] })).toThrow();
+  });
+
+  it("throws for monthly with an out-of-range day", () => {
+    expect(() => buildRRule({ frequency: "monthly", dayOfMonth: 32 })).toThrow();
+    expect(() => buildRRule({ frequency: "monthly", dayOfMonth: 0 })).toThrow();
+  });
+
+  it("produces a string expandRule can actually use", () => {
+    const rule = buildRRule({ frequency: "weekly", daysOfWeek: [0] });
+    expect(rule).not.toBeNull();
+    const dates = expandRule(rule as string, utc(2026, 1, 5), utc(2026, 1, 1), utc(2026, 1, 31));
+    expect(iso(dates)).toEqual(["2026-01-05", "2026-01-12", "2026-01-19", "2026-01-26"]);
+  });
+});
+
+describe("parseRRuleToInput", () => {
+  it("round-trips a one-off task", () => {
+    expect(parseRRuleToInput(null)).toEqual({ frequency: "once" });
+  });
+
+  it("round-trips a daily rule", () => {
+    const rule = buildRRule({ frequency: "daily", interval: 2 });
+    expect(parseRRuleToInput(rule)).toEqual({ frequency: "daily", interval: 2 });
+  });
+
+  it("round-trips a weekly rule with multiple days", () => {
+    const input = { frequency: "weekly" as const, interval: 1, daysOfWeek: [0, 2, 4] };
+    const rule = buildRRule(input);
+    expect(parseRRuleToInput(rule)).toEqual(input);
+  });
+
+  it("round-trips a monthly rule", () => {
+    const input = { frequency: "monthly" as const, interval: 1, dayOfMonth: 1 };
+    const rule = buildRRule(input);
+    expect(parseRRuleToInput(rule)).toEqual(input);
+  });
+
+  it("round-trips a fortnightly rule", () => {
+    const input = { frequency: "weekly" as const, interval: 2, daysOfWeek: [5] };
+    const rule = buildRRule(input);
+    expect(parseRRuleToInput(rule)).toEqual(input);
   });
 });
