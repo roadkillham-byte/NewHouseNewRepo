@@ -62,7 +62,11 @@ export function CalendarMonth({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-md border bg-border text-xs">
+        {/* A 7-column month grid can't usefully compress below ~560px, so on
+            narrow screens it scrolls inside its own container rather than
+            forcing the whole page to scroll sideways. */}
+        <div className="-mx-2 overflow-x-auto px-2">
+          <div className="grid min-w-[560px] grid-cols-7 gap-px overflow-hidden rounded-md border bg-border text-xs">
           {WEEKDAY_LABELS.map((label) => (
             <div key={label} className="bg-muted px-2 py-1 text-center font-medium">
               {label}
@@ -110,6 +114,7 @@ export function CalendarMonth({
               </div>
             );
           })}
+          </div>
         </div>
       </CardContent>
     </Card>

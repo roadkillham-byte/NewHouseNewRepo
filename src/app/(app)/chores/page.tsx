@@ -53,12 +53,16 @@ export default async function ChoresPage({
         <p className="text-muted-foreground">Who&apos;s doing what, and when.</p>
       </div>
 
+      {/* min-w-0 on the grid children: without it they default to
+          min-width:auto and refuse to shrink below their widest content,
+          so the calendar's fixed 7-column grid would push the whole page
+          sideways instead of scrolling inside its own container. */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <CalendarMonth monthAnchor={monthAnchor} chores={monthChores} />
           <ChoreManagementList chores={definitions} members={memberOptions} />
         </div>
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <TodayList chores={todaysChores} />
           <FairnessLedger rows={fairness} />
           <MoveInChecklist rows={checklist} />

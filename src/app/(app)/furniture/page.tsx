@@ -22,7 +22,7 @@ export default async function FurniturePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-3">
+        <div className="min-w-0 lg:col-span-3">
           <StatusBoard items={items} />
         </div>
         <div>

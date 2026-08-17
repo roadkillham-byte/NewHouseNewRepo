@@ -58,7 +58,7 @@ export default async function DashboardPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <ChoreCheckpoint chores={chores} today={today} currentMemberId={memberId} />
           <BillCheckpoint periods={upcomingBills} today={today} currentMemberId={memberId} />
         </div>
