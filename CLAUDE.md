@@ -25,11 +25,14 @@ floats. `src/lib/money.ts` is the only place currency is formatted/parsed;
 `src/lib/split.ts` is the only place a bill total is divided across people.
 Don't do either conversion inline elsewhere.
 
-**Build status:** Phase 0 (foundation) and Phase 1 (chores) are done —
-recurring/one-off chore definitions, a month calendar, today's list,
-round-robin rotation, the fairness ledger, and the move-in checklist, all
-verified end-to-end against a real local Postgres. Bills, furniture,
-dashboard, and settlement are Phases 2–5 — see the plan file.
+**Build status:** Phases 0–2 are done. Phase 0: foundation. Phase 1:
+chores — recurring/one-off definitions, month calendar, today's list,
+round-robin rotation, fairness ledger, move-in checklist. Phase 2: bills —
+fixed and variable-amount bills, a due-date timeline, even-split shares,
+mark-as-paid with a ledger audit trail, live-computed overdue/due-today
+status, and per-person outstanding balances. All verified end-to-end
+against a real local Postgres, not just unit tests. Furniture, dashboard,
+and settlement are Phases 3–5 — see the plan file.
 
 ## Commands
 
@@ -89,6 +92,25 @@ re-run after editing.
   real `<button>` — omitting it throws a console error at runtime that
   `next build` won't catch. `Checkbox`/`Select` do participate in native
   `<form>` submission (a hidden mirrored input), same as Radix.
+- **Bills split evenly only, for now.** `bills.splitRule` supports
+  `even`/`shares`/`custom` in the schema, but only `even` is wired up (via
+  `splitEven()` in `src/lib/split.ts`) — the create/edit bill form doesn't
+  expose weighted splits. `splitByShares()` exists and is unit-tested, but a
+  weighted split needs somewhere to persist per-member weights per bill
+  (no such table exists yet), which was cut from Phase 2's scope. The
+  nearest thing to a workaround today is deactivating a bill and manually
+  correcting individual `bill_shares.amount_owed_cents` rows.
+- **`src/lib/bill-status.ts`**: a bill_period's stored `status` column is
+  set once at creation and never kept in sync — the *displayed* status
+  (overdue/due today/upcoming/settled) is always computed live from the due
+  date and payment state via `computeBillPeriodStatus()`. Don't trust the
+  stored column for anything user-facing.
+- **`src/lib/materialise-bills.ts`** mirrors `materialise.ts` for bills:
+  idempotent, and `src/app/(app)/bills/actions.ts` clears only *future,
+  completely unpaid* periods when a bill's schedule/amount changes —
+  periods with even one paid share are left alone. `markSharePaidAction`/
+  `unmarkSharePaidAction` write (and clean up) a `ledger_entries` row, since
+  that table is the intended source of truth for "who owes whom" overall.
 - **`src/lib/materialise.ts`** turns chore definitions into `chore_instances`
   — idempotent (safe to re-run), continues round-robin rotation across
   materialise runs by reading the most recent existing instance rather than

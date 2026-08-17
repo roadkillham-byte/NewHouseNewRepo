@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { households } from "@/db/schema";
 import { materialiseChoresForHousehold } from "@/lib/materialise";
+import { materialiseBillsForHousehold } from "@/lib/materialise-bills";
 
 /**
- * Daily materialise job. Rolls the chore-instance window forward and
- * backfills any missing instances. Bill-period materialisation joins this
- * same endpoint in Phase 2.
+ * Daily materialise job. Rolls the chore-instance and bill-period windows
+ * forward and backfills anything missing.
  *
  * Authenticated via CRON_SECRET (a bearer token), not a user session — this
  * route is explicitly excluded from proxy.ts's auth matcher. Configure the
@@ -27,8 +27,9 @@ export async function GET(request: NextRequest) {
 
   const results = [];
   for (const household of allHouseholds) {
-    const result = await materialiseChoresForHousehold(household.id);
-    results.push({ householdId: household.id, name: household.name, ...result });
+    const chores = await materialiseChoresForHousehold(household.id);
+    const bills = await materialiseBillsForHousehold(household.id);
+    results.push({ householdId: household.id, name: household.name, chores, bills });
   }
 
   return NextResponse.json({ ok: true, ranAt: new Date().toISOString(), results });

@@ -6,10 +6,10 @@ import {
   getChoreDefinitions,
   getChoreInstancesForRange,
   getFairnessLedger,
-  getHouseholdMembers,
   getMoveInChecklist,
   getTodaysChores,
 } from "@/db/queries/chores";
+import { getHouseholdMembers } from "@/db/queries/household";
 import { CalendarMonth } from "./calendar-month";
 import { ChoreManagementList } from "./chore-management-list";
 import { FairnessLedger } from "./fairness-ledger";

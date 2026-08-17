@@ -78,6 +78,3 @@ export async function getFairnessLedger(householdId: string, sinceDate: Date) {
     .orderBy(desc(sql`coalesce(sum(${choreDefinitions.effortPoints}), 0)`));
 }
 
-export async function getHouseholdMembers(householdId: string) {
-  return db.select().from(members).where(eq(members.householdId, householdId)).orderBy(asc(members.createdAt));
-}
