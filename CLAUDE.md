@@ -25,14 +25,16 @@ floats. `src/lib/money.ts` is the only place currency is formatted/parsed;
 `src/lib/split.ts` is the only place a bill total is divided across people.
 Don't do either conversion inline elsewhere.
 
-**Build status:** Phases 0–2 are done. Phase 0: foundation. Phase 1:
+**Build status:** Phases 0–3 are done. Phase 0: foundation. Phase 1:
 chores — recurring/one-off definitions, month calendar, today's list,
 round-robin rotation, fairness ledger, move-in checklist. Phase 2: bills —
 fixed and variable-amount bills, a due-date timeline, even-split shares,
 mark-as-paid with a ledger audit trail, live-computed overdue/due-today
-status, and per-person outstanding balances. All verified end-to-end
-against a real local Postgres, not just unit tests. Furniture, dashboard,
-and settlement are Phases 3–5 — see the plan file.
+status, and per-person outstanding balances. Phase 3: furniture — a
+four-column status board, room grouping, budget roll-up, and split
+contributions. All verified end-to-end against a real local Postgres, not
+just unit tests. Dashboard and settlement are Phases 4–5 — see the plan
+file.
 
 ## Commands
 
@@ -92,6 +94,17 @@ re-run after editing.
   real `<button>` — omitting it throws a console error at runtime that
   `next build` won't catch. `Checkbox`/`Select` do participate in native
   `<form>` submission (a hidden mirrored input), same as Radix.
+- **Pure logic lives in `src/lib/`, never in `src/db/queries/`.** Anything
+  importable from `src/db/` evaluates the Postgres client at module load and
+  throws without a real `DATABASE_URL` — so a pure function parked in a
+  queries file can't be unit-tested. `computeBudgetRollup()` lives in
+  `src/lib/budget.ts` for exactly this reason, with
+  `toBudgetInput()` in the queries file adapting joined rows to it.
+- **Furniture purchaser attribution:** `furniture_items.purchasedBy` is set
+  whenever an item becomes `owned` (on create, on edit, or via the status
+  buttons) and cleared when it moves back out. Never write `undefined` to
+  it in a Drizzle `.set()` — that means "leave this column alone" and
+  strands a stale purchaser on an item that's no longer owned.
 - **Bills split evenly only, for now.** `bills.splitRule` supports
   `even`/`shares`/`custom` in the schema, but only `even` is wired up (via
   `splitEven()` in `src/lib/split.ts`) — the create/edit bill form doesn't
