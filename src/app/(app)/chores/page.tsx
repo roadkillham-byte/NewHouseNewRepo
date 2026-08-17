@@ -1,7 +1,7 @@
 import { endOfMonth, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { startOfUtcDay } from "@/lib/materialise";
+import { houseToday } from "@/lib/today";
 import {
   getChoreDefinitions,
   getChoreInstancesForRange,
@@ -31,7 +31,7 @@ export default async function ChoresPage({
   const gridStart = startOfWeek(startOfMonth(monthAnchor), { weekStartsOn: 1 });
   const gridEnd = endOfWeek(endOfMonth(monthAnchor), { weekStartsOn: 1 });
 
-  const today = startOfUtcDay(new Date());
+  const today = houseToday();
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
 

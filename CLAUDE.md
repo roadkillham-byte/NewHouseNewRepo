@@ -100,6 +100,21 @@ re-run after editing.
   real `<button>` — omitting it throws a console error at runtime that
   `next build` won't catch. `Checkbox`/`Select` do participate in native
   `<form>` submission (a hidden mirrored input), same as Radix.
+- **Never use the server's UTC date as "today".** `houseToday()` in
+  `src/lib/today.ts` resolves the current date in the household's timezone
+  (`HOUSE_TIMEZONE`, default `Australia/Sydney`) and returns it as UTC
+  midnight to match the date columns. The naive
+  `startOfUtcDay(new Date())` is off by a day for the whole Sydney morning
+  — 8am AEST is 10pm UTC the day before — so chores and bills showed the
+  wrong day exactly when people check. `startOfUtcDay()` remains, but only
+  for normalising an *arbitrary* date, never for "now".
+- **Server actions are public endpoints; a session is not authorization.**
+  Actions that take a bare row id must call the matching guard in
+  `src/lib/authz.ts` before mutating — being signed in does not prove the
+  row belongs to your household. Actions on a *definition* can scope in
+  the WHERE clause instead (`eq(table.householdId, session.user.householdId)`),
+  and several already do; child rows (instances, shares, contributions)
+  need the guard because only the child's id is passed.
 - **`src/lib/settlement.ts`**: `computeNetPositions()` splits the
   `ledger_entries` pot evenly and returns each member's net;
   `computeTransfers()` greedily matches largest creditor to largest debtor,

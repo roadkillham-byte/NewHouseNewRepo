@@ -7,7 +7,9 @@ import { db } from "@/db";
 import { choreDefinitions, choreInstances } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { buildRRule } from "@/lib/recurrence";
-import { materialiseChoresForHousehold, startOfUtcDay } from "@/lib/materialise";
+import { materialiseChoresForHousehold } from "@/lib/materialise";
+import { houseToday } from "@/lib/today";
+import { choreInstanceBelongsToHousehold } from "@/lib/authz";
 
 const choreFormSchema = z
   .object({
@@ -175,7 +177,7 @@ export async function setChoreActiveAction(choreId: string, active: boolean): Pr
 }
 
 async function clearFuturePendingInstances(definitionId: string): Promise<void> {
-  const today = startOfUtcDay(new Date());
+  const today = houseToday();
   await db
     .delete(choreInstances)
     .where(
@@ -187,35 +189,53 @@ async function clearFuturePendingInstances(definitionId: string): Promise<void> 
     );
 }
 
+/**
+ * Instance actions receive only the instance id, so the household has to be
+ * established by walking up to the definition — see src/lib/authz.ts.
+ * `revalidatePath` covers both surfaces these are called from: the chores
+ * page and the dashboard.
+ */
+async function requireOwnedInstance(instanceId: string): Promise<void> {
+  const session = await auth();
+  if (!session?.user) throw new Error("Not signed in.");
+  if (!(await choreInstanceBelongsToHousehold(instanceId, session.user.householdId))) {
+    throw new Error("Not found.");
+  }
+}
+
 export async function completeInstanceAction(instanceId: string): Promise<void> {
   const session = await auth();
   if (!session?.user) throw new Error("Not signed in.");
+  if (!(await choreInstanceBelongsToHousehold(instanceId, session.user.householdId))) {
+    throw new Error("Not found.");
+  }
 
   await db
     .update(choreInstances)
     .set({ status: "done", completedAt: new Date(), completedBy: session.user.id })
     .where(eq(choreInstances.id, instanceId));
   revalidatePath("/chores");
+  revalidatePath("/");
 }
 
 export async function uncompleteInstanceAction(instanceId: string): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
+  await requireOwnedInstance(instanceId);
 
   await db
     .update(choreInstances)
     .set({ status: "pending", completedAt: null, completedBy: null })
     .where(eq(choreInstances.id, instanceId));
   revalidatePath("/chores");
+  revalidatePath("/");
 }
 
 export async function skipInstanceAction(instanceId: string): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
+  await requireOwnedInstance(instanceId);
 
   await db
     .update(choreInstances)
     .set({ status: "skipped" })
     .where(eq(choreInstances.id, instanceId));
   revalidatePath("/chores");
+  revalidatePath("/");
 }

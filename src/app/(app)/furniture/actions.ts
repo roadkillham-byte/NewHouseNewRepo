@@ -7,6 +7,10 @@ import { db } from "@/db";
 import { furnitureContributions, furnitureItems, ledgerEntries } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { parseMoney } from "@/lib/money";
+import {
+  furnitureContributionBelongsToHousehold,
+  furnitureItemBelongsToHousehold,
+} from "@/lib/authz";
 
 const itemFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
@@ -210,6 +214,9 @@ export async function addContributionAction(
 ): Promise<ContributionFormState> {
   const session = await auth();
   if (!session?.user) return { error: "Not signed in." };
+  if (!(await furnitureItemBelongsToHousehold(itemId, session.user.householdId))) {
+    return { error: "Not found." };
+  }
 
   const parsed = contributionFormSchema.safeParse({ amount: formData.get("amount") });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid amount." };
@@ -236,11 +243,15 @@ export async function addContributionAction(
   });
 
   revalidatePath("/furniture");
+  revalidatePath("/settle");
 }
 
 export async function removeContributionAction(contributionId: string): Promise<void> {
   const session = await auth();
   if (!session?.user) throw new Error("Not signed in.");
+  if (!(await furnitureContributionBelongsToHousehold(contributionId, session.user.householdId))) {
+    throw new Error("Not found.");
+  }
 
   await db.delete(furnitureContributions).where(eq(furnitureContributions.id, contributionId));
   await db
@@ -253,4 +264,5 @@ export async function removeContributionAction(contributionId: string): Promise<
     );
 
   revalidatePath("/furniture");
+  revalidatePath("/settle");
 }

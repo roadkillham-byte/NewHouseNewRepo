@@ -2,6 +2,7 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { choreDefinitions, choreInstances, members } from "@/db/schema";
 import { expandRule, nextRoundRobinAssignee, type RotationMember } from "./recurrence";
+import { addUtcDays, houseToday } from "./today";
 
 export const MATERIALISE_WINDOW_DAYS = 60;
 
@@ -22,7 +23,7 @@ export async function materialiseChoresForHousehold(
   householdId: string,
   windowDays: number = MATERIALISE_WINDOW_DAYS,
 ): Promise<{ definitionsProcessed: number; instancesCreated: number }> {
-  const today = startOfUtcDay(new Date());
+  const today = houseToday();
   const windowEnd = addUtcDays(today, windowDays);
 
   const definitions = await db
@@ -134,16 +135,6 @@ async function getLastAssigneeId(definitionId: string): Promise<string | null> {
     .orderBy(desc(choreInstances.dueDate))
     .limit(1);
   return last?.assigneeId ?? null;
-}
-
-export function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
-function addUtcDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setUTCDate(result.getUTCDate() + days);
-  return result;
 }
 
 function isoDate(date: Date): string {

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { startOfUtcDay } from "@/lib/materialise";
+import { houseToday } from "@/lib/today";
 import {
   getHouseStats,
   getOutstandingChores,
@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   if (!session?.user) redirect("/login");
   const { householdId, id: memberId } = session.user;
 
-  const today = startOfUtcDay(new Date());
+  const today = houseToday();
   const firstName = (session.user.name ?? "there").split(" ")[0];
 
   const [chores, upcomingBills, personalOwedCents, stats, activity] = await Promise.all([

@@ -8,7 +8,8 @@ import { bills, billPeriods, billShares, ledgerEntries } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { buildRRule } from "@/lib/recurrence";
 import { parseMoney } from "@/lib/money";
-import { startOfUtcDay } from "@/lib/materialise";
+import { houseToday } from "@/lib/today";
+import { billPeriodBelongsToHousehold, billShareBelongsToHousehold } from "@/lib/authz";
 import { materialiseBillsForHousehold, createEvenShares } from "@/lib/materialise-bills";
 import { getActiveHouseholdMemberIds } from "@/db/queries/household";
 
@@ -178,7 +179,7 @@ export async function setBillActiveAction(billId: string, active: boolean): Prom
 }
 
 async function clearFutureUnsettledPeriods(billId: string): Promise<void> {
-  const today = startOfUtcDay(new Date());
+  const today = houseToday();
   const candidates = await db
     .select({ id: billPeriods.id })
     .from(billPeriods)
@@ -208,6 +209,9 @@ export async function setBillPeriodAmountAction(
 ): Promise<SetAmountState> {
   const session = await auth();
   if (!session?.user) return { error: "Not signed in." };
+  if (!(await billPeriodBelongsToHousehold(periodId, session.user.householdId))) {
+    return { error: "Not found." };
+  }
 
   const parsed = amountFormSchema.safeParse({ amount: formData.get("amount") });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid amount." };
@@ -232,6 +236,9 @@ export async function setBillPeriodAmountAction(
 export async function markSharePaidAction(shareId: string): Promise<void> {
   const session = await auth();
   if (!session?.user) throw new Error("Not signed in.");
+  if (!(await billShareBelongsToHousehold(shareId, session.user.householdId))) {
+    throw new Error("Not found.");
+  }
 
   const [share] = await db.select().from(billShares).where(eq(billShares.id, shareId)).limit(1);
   if (!share || share.paidAt) return; // already paid or missing — nothing to do
@@ -251,11 +258,16 @@ export async function markSharePaidAction(shareId: string): Promise<void> {
   });
 
   revalidatePath("/bills");
+  revalidatePath("/");
+  revalidatePath("/settle");
 }
 
 export async function unmarkSharePaidAction(shareId: string): Promise<void> {
   const session = await auth();
   if (!session?.user) throw new Error("Not signed in.");
+  if (!(await billShareBelongsToHousehold(shareId, session.user.householdId))) {
+    throw new Error("Not found.");
+  }
 
   await db
     .update(billShares)
@@ -267,4 +279,6 @@ export async function unmarkSharePaidAction(shareId: string): Promise<void> {
     .where(and(eq(ledgerEntries.type, "bill_payment"), eq(ledgerEntries.sourceId, shareId)));
 
   revalidatePath("/bills");
+  revalidatePath("/");
+  revalidatePath("/settle");
 }

@@ -3,7 +3,8 @@ import { db } from "@/db";
 import { bills, billPeriods, billShares, members } from "@/db/schema";
 import { expandRule } from "./recurrence";
 import { splitEven } from "./split";
-import { MATERIALISE_WINDOW_DAYS, startOfUtcDay } from "./materialise";
+import { MATERIALISE_WINDOW_DAYS } from "./materialise";
+import { addUtcDays, houseToday } from "./today";
 
 type BillRow = typeof bills.$inferSelect;
 
@@ -19,7 +20,7 @@ export async function materialiseBillsForHousehold(
   householdId: string,
   windowDays: number = MATERIALISE_WINDOW_DAYS,
 ): Promise<{ billsProcessed: number; periodsCreated: number }> {
-  const today = startOfUtcDay(new Date());
+  const today = houseToday();
   const windowEnd = addUtcDays(today, windowDays);
 
   const activeBills = await db
@@ -115,12 +116,6 @@ async function getMostRecentDueDateBefore(billId: string, before: Date): Promise
   const priorDates = rows.map((r) => r.dueDate).filter((d) => d < before);
   if (priorDates.length === 0) return null;
   return priorDates.reduce((max, d) => (d > max ? d : max));
-}
-
-function addUtcDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setUTCDate(result.getUTCDate() + days);
-  return result;
 }
 
 function isoDate(date: Date): string {

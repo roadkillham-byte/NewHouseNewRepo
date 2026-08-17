@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { startOfUtcDay } from "@/lib/materialise";
+import { addUtcDays, houseToday } from "@/lib/today";
 import { getBillDefinitions, getBillPeriodsForTimeline, getOutstandingBalances } from "@/db/queries/bills";
 import { BillManagementList } from "./bill-management-list";
 import { OutstandingBalances } from "./outstanding-balances";
@@ -11,7 +11,7 @@ export default async function BillsPage() {
   if (!session?.user) redirect("/login");
   const householdId = session.user.householdId;
 
-  const today = startOfUtcDay(new Date());
+  const today = houseToday();
   const windowStart = addUtcDays(today, -14);
   const windowEnd = addUtcDays(today, 90);
 
@@ -39,10 +39,4 @@ export default async function BillsPage() {
       </div>
     </div>
   );
-}
-
-function addUtcDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setUTCDate(result.getUTCDate() + days);
-  return result;
 }

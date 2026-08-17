@@ -9,6 +9,8 @@
  * settled.
  */
 
+import { startOfUtcDay } from "./today";
+
 export type BillPeriodDisplayStatus = "settled" | "overdue" | "due_today" | "upcoming";
 
 export function computeBillPeriodStatus(
@@ -24,8 +26,4 @@ export function computeBillPeriodStatus(
   if (due.getTime() < now.getTime()) return "overdue";
   if (due.getTime() === now.getTime()) return "due_today";
   return "upcoming";
-}
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
