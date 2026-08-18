@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireMember } from "@/lib/session";
 import { addUtcDays, houseToday } from "@/lib/today";
 import { getBillDefinitions, getBillPeriodsForTimeline, getOutstandingBalances } from "@/db/queries/bills";
 import { BillManagementList } from "./bill-management-list";
@@ -7,11 +6,10 @@ import { OutstandingBalances } from "./outstanding-balances";
 import { Timeline } from "./timeline";
 
 export default async function BillsPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-  const householdId = session.user.householdId;
+  const member = await requireMember();
+  const householdId = member.householdId;
 
-  const today = houseToday();
+  const today = houseToday(new Date(), member.householdTimezone);
   const windowStart = addUtcDays(today, -14);
   const windowEnd = addUtcDays(today, 90);
 

@@ -5,6 +5,7 @@ import { expandRule } from "./recurrence";
 import { splitEven } from "./split";
 import { MATERIALISE_WINDOW_DAYS } from "./materialise";
 import { addUtcDays, houseToday } from "./today";
+import { getHouseholdTimezone } from "@/db/queries/settings";
 
 type BillRow = typeof bills.$inferSelect;
 
@@ -20,7 +21,7 @@ export async function materialiseBillsForHousehold(
   householdId: string,
   windowDays: number = MATERIALISE_WINDOW_DAYS,
 ): Promise<{ billsProcessed: number; periodsCreated: number }> {
-  const today = houseToday();
+  const today = houseToday(new Date(), await getHouseholdTimezone(householdId));
   const windowEnd = addUtcDays(today, windowDays);
 
   const activeBills = await db

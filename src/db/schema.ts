@@ -18,6 +18,10 @@ import { relations } from "drizzle-orm";
 export const households = pgTable("households", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  // IANA timezone the house lives in. Every "today" is resolved in this
+  // zone — see houseToday() in src/lib/today.ts. Defaults to the
+  // HOUSE_TIMEZONE env value at creation time.
+  timezone: text("timezone").notNull().default("Australia/Sydney"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -33,10 +37,26 @@ export const members = pgTable(
     passwordHash: text("password_hash").notNull(),
     avatarColor: text("avatar_color").notNull().default("#6366f1"),
     active: boolean("active").notNull().default(true),
+    // Set when an account is created with a generated temporary password.
+    // The app layout redirects to /change-password until it's cleared.
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("members_email_unique").on(t.email)],
 );
+
+/**
+ * Failed and successful login attempts, used for rate limiting. Kept in
+ * Postgres rather than memory because serverless instances don't share
+ * memory — an in-memory counter is trivially bypassed by hitting a cold
+ * instance. Pruned by the daily cron route.
+ */
+export const loginAttempts = pgTable("login_attempts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  succeeded: boolean("succeeded").notNull(),
+  attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 // ---------------------------------------------------------------------------
 // Chores

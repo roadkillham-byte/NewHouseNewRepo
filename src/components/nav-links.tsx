@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarCheck, Home, Receipt, Scale, Sofa } from "lucide-react";
+import { CalendarCheck, Home, Receipt, Scale, Settings, Sofa } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/bills", label: "Bills", icon: Receipt },
   { href: "/furniture", label: "Furniture", icon: Sofa },
   { href: "/settle", label: "Settle", icon: Scale },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 function useIsActive() {

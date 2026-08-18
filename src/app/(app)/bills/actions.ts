@@ -5,7 +5,7 @@ import { and, eq, gte, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { bills, billPeriods, billShares, ledgerEntries } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { requireMemberForAction } from "@/lib/session";
 import { buildRRule } from "@/lib/recurrence";
 import { parseMoney } from "@/lib/money";
 import { houseToday } from "@/lib/today";
@@ -69,8 +69,7 @@ export async function createBillAction(
   _prev: BillFormState,
   formData: FormData,
 ): Promise<BillFormState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Not signed in." };
+  const member = await requireMemberForAction();
 
   const parsed = parseBillForm(formData);
   if (!parsed.success) {
@@ -95,7 +94,7 @@ export async function createBillAction(
   }
 
   await db.insert(bills).values({
-    householdId: session.user.householdId,
+    householdId: member.householdId,
     name: data.name,
     vendor: data.vendor || null,
     category: data.category || null,
@@ -106,7 +105,7 @@ export async function createBillAction(
     splitRule: "even",
   });
 
-  await materialiseBillsForHousehold(session.user.householdId);
+  await materialiseBillsForHousehold(member.householdId);
   revalidatePath("/bills");
 }
 
@@ -115,8 +114,7 @@ export async function updateBillAction(
   _prev: BillFormState,
   formData: FormData,
 ): Promise<BillFormState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Not signed in." };
+  const member = await requireMemberForAction();
 
   const parsed = parseBillForm(formData);
   if (!parsed.success) {
@@ -151,35 +149,34 @@ export async function updateBillAction(
       amountMode: data.amountMode,
       defaultAmountCents,
     })
-    .where(and(eq(bills.id, billId), eq(bills.householdId, session.user.householdId)));
+    .where(and(eq(bills.id, billId), eq(bills.householdId, member.householdId)));
 
   // Same principle as chores: never touch a period that already has a paid
   // share (real payment history), but future periods that are still
   // completely unpaid get dropped and rebuilt against the new schedule/amount.
-  await clearFutureUnsettledPeriods(billId);
-  await materialiseBillsForHousehold(session.user.householdId);
+  await clearFutureUnsettledPeriods(billId, member.householdTimezone);
+  await materialiseBillsForHousehold(member.householdId);
   revalidatePath("/bills");
 }
 
 export async function setBillActiveAction(billId: string, active: boolean): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
+  const member = await requireMemberForAction();
 
   await db
     .update(bills)
     .set({ active })
-    .where(and(eq(bills.id, billId), eq(bills.householdId, session.user.householdId)));
+    .where(and(eq(bills.id, billId), eq(bills.householdId, member.householdId)));
 
   if (active) {
-    await materialiseBillsForHousehold(session.user.householdId);
+    await materialiseBillsForHousehold(member.householdId);
   } else {
-    await clearFutureUnsettledPeriods(billId);
+    await clearFutureUnsettledPeriods(billId, member.householdTimezone);
   }
   revalidatePath("/bills");
 }
 
-async function clearFutureUnsettledPeriods(billId: string): Promise<void> {
-  const today = houseToday();
+async function clearFutureUnsettledPeriods(billId: string, timeZone: string): Promise<void> {
+  const today = houseToday(new Date(), timeZone);
   const candidates = await db
     .select({ id: billPeriods.id })
     .from(billPeriods)
@@ -207,9 +204,8 @@ export async function setBillPeriodAmountAction(
   _prev: SetAmountState,
   formData: FormData,
 ): Promise<SetAmountState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Not signed in." };
-  if (!(await billPeriodBelongsToHousehold(periodId, session.user.householdId))) {
+  const member = await requireMemberForAction();
+  if (!(await billPeriodBelongsToHousehold(periodId, member.householdId))) {
     return { error: "Not found." };
   }
 
@@ -225,7 +221,7 @@ export async function setBillPeriodAmountAction(
 
   await db.update(billPeriods).set({ totalCents: amountCents }).where(eq(billPeriods.id, periodId));
 
-  const memberIds = await getActiveHouseholdMemberIds(session.user.householdId);
+  const memberIds = await getActiveHouseholdMemberIds(member.householdId);
   if (memberIds.length > 0) {
     await createEvenShares(periodId, amountCents, memberIds);
   }
@@ -234,9 +230,8 @@ export async function setBillPeriodAmountAction(
 }
 
 export async function markSharePaidAction(shareId: string): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
-  if (!(await billShareBelongsToHousehold(shareId, session.user.householdId))) {
+  const member = await requireMemberForAction();
+  if (!(await billShareBelongsToHousehold(shareId, member.householdId))) {
     throw new Error("Not found.");
   }
 
@@ -245,11 +240,11 @@ export async function markSharePaidAction(shareId: string): Promise<void> {
 
   await db
     .update(billShares)
-    .set({ paidAt: new Date(), markedBy: session.user.id })
+    .set({ paidAt: new Date(), markedBy: member.id })
     .where(eq(billShares.id, shareId));
 
   await db.insert(ledgerEntries).values({
-    householdId: session.user.householdId,
+    householdId: member.householdId,
     memberId: share.memberId,
     type: "bill_payment",
     amountCents: share.amountOwedCents,
@@ -263,9 +258,8 @@ export async function markSharePaidAction(shareId: string): Promise<void> {
 }
 
 export async function unmarkSharePaidAction(shareId: string): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
-  if (!(await billShareBelongsToHousehold(shareId, session.user.householdId))) {
+  const member = await requireMemberForAction();
+  if (!(await billShareBelongsToHousehold(shareId, member.householdId))) {
     throw new Error("Not found.");
   }
 

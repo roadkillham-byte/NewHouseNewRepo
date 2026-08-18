@@ -25,7 +25,8 @@ floats. `src/lib/money.ts` is the only place currency is formatted/parsed;
 `src/lib/split.ts` is the only place a bill total is divided across people.
 Don't do either conversion inline elsewhere.
 
-**Build status:** All five planned phases are done. Phase 0: foundation.
+**Build status:** All five planned phases are done, plus roadmap Stage 1
+(settings & accounts). Phase 0: foundation.
 Phase 1: chores — recurring/one-off definitions, month calendar, today's
 list, round-robin rotation, fairness ledger, move-in checklist. Phase 2:
 bills — fixed and variable-amount bills, a due-date timeline, even-split
@@ -36,6 +37,11 @@ contributions. Phase 4: dashboard — stat tiles, chore/bill checkpoints
 actionable inline, recent-activity feed. Phase 5: settle up —
 ledger-backed net positions and minimal transfers. All verified end-to-end
 against a real local Postgres, not just unit tests.
+
+Stage 1 added: a settings page (house name + timezone, housemate
+management, your own profile and password), accounts created in-app with a
+generated temporary password, and a forced password change on first
+sign-in. Adding a housemate no longer means editing `seed.ts`.
 
 The daily *email* digest from the original plan is **not** built — the
 in-app dashboard covers the checkpoint need, and email needs a provider
@@ -59,6 +65,11 @@ for yet.
 | DB: run migrations  | `npm run db:migrate`     |
 | DB: browse (Drizzle Studio) | `npm run db:studio` |
 | DB: seed household + members | `npm run db:seed` |
+
+`db:seed` is for **bootstrapping an empty database only**. Once the house
+exists, add and manage housemates from Settings in the app — every seeded
+member is flagged `mustChangePassword` and is sent to `/change-password` on
+first sign-in.
 
 Before any of these will run for real, copy `.env.example` to `.env.local`
 and fill in a Supabase `DATABASE_URL` (and `AUTH_SECRET` — generate with
@@ -100,6 +111,20 @@ re-run after editing.
   real `<button>` — omitting it throws a console error at runtime that
   `next build` won't catch. `Checkbox`/`Select` do participate in native
   `<form>` submission (a hidden mirrored input), same as Radix.
+- **`requireMember()` in `src/lib/session.ts` is the auth entry point**, not
+  `auth()`. Sessions are JWTs written once at sign-in, so anything mutable
+  in the token goes stale — most importantly `active`, which meant
+  deactivating a housemate did *not* log them out (their token stayed valid
+  for weeks). The token now carries only immutable identity (`id`,
+  `householdId`); name, colour, `active` and the household's timezone are
+  read fresh per request. Pages use `requireMember()` (redirects), actions
+  use `requireMemberForAction()` (throws). Don't reintroduce `auth()` in a
+  page or action. `proxy.ts` still uses the DB-free `auth.config.ts`.
+- **Timezone is per household** (`households.timezone`), set in settings.
+  `houseToday()` takes it as an argument — every call site must pass one, so
+  a bare `houseToday()` is a bug. Server code gets it from
+  `member.householdTimezone` or `getHouseholdTimezone(householdId)`.
+  `HOUSE_TIMEZONE` is now only the default for a newly created household.
 - **Never use the server's UTC date as "today".** `houseToday()` in
   `src/lib/today.ts` resolves the current date in the household's timezone
   (`HOUSE_TIMEZONE`, default `Australia/Sydney`) and returns it as UTC

@@ -1,15 +1,13 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireMember } from "@/lib/session";
 import { getFurnitureItems, toBudgetInput } from "@/db/queries/furniture";
 import { computeBudgetRollup } from "@/lib/budget";
 import { BudgetRollup } from "./budget-rollup";
 import { StatusBoard } from "./status-board";
 
 export default async function FurniturePage() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
+  const member = await requireMember();
 
-  const items = await getFurnitureItems(session.user.householdId);
+  const items = await getFurnitureItems(member.householdId);
   const rollup = computeBudgetRollup(toBudgetInput(items));
 
   return (

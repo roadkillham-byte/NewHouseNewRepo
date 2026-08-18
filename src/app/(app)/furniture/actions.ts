@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { furnitureContributions, furnitureItems, ledgerEntries } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { requireMemberForAction } from "@/lib/session";
 import { parseMoney } from "@/lib/money";
 import {
   furnitureContributionBelongsToHousehold,
@@ -69,8 +69,7 @@ export async function createItemAction(
   _prev: ItemFormState,
   formData: FormData,
 ): Promise<ItemFormState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Not signed in." };
+  const member = await requireMemberForAction();
 
   const parsed = parseItemForm(formData);
   if (!parsed.success) {
@@ -91,7 +90,7 @@ export async function createItemAction(
   }
 
   await db.insert(furnitureItems).values({
-    householdId: session.user.householdId,
+    householdId: member.householdId,
     name: data.name,
     room: data.room || null,
     status: data.status,
@@ -103,7 +102,7 @@ export async function createItemAction(
     // Added as already-owned: record who bought it, so the settle-up panel
     // can say who the others owe. (An item created as needed/researching/
     // ordered gets its purchaser when it's advanced to owned instead.)
-    purchasedBy: data.status === "owned" ? session.user.id : null,
+    purchasedBy: data.status === "owned" ? member.id : null,
   });
 
   revalidatePath("/furniture");
@@ -114,8 +113,7 @@ export async function updateItemAction(
   _prev: ItemFormState,
   formData: FormData,
 ): Promise<ItemFormState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Not signed in." };
+  const member = await requireMemberForAction();
 
   const parsed = parseItemForm(formData);
   if (!parsed.success) {
@@ -139,7 +137,7 @@ export async function updateItemAction(
     .select({ purchasedBy: furnitureItems.purchasedBy })
     .from(furnitureItems)
     .where(
-      and(eq(furnitureItems.id, itemId), eq(furnitureItems.householdId, session.user.householdId)),
+      and(eq(furnitureItems.id, itemId), eq(furnitureItems.householdId, member.householdId)),
     )
     .limit(1);
 
@@ -160,19 +158,18 @@ export async function updateItemAction(
       // clears it, so a re-purchase attributes correctly.
       purchasedBy:
         data.status === "owned"
-          ? (existing?.purchasedBy ?? session.user.id)
+          ? (existing?.purchasedBy ?? member.id)
           : null,
     })
     .where(
-      and(eq(furnitureItems.id, itemId), eq(furnitureItems.householdId, session.user.householdId)),
+      and(eq(furnitureItems.id, itemId), eq(furnitureItems.householdId, member.householdId)),
     );
 
   revalidatePath("/furniture");
 }
 
 export async function setItemStatusAction(itemId: string, status: string): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
+  const member = await requireMemberForAction();
 
   const parsedStatus = z.enum(["needed", "researching", "ordered", "owned"]).parse(status);
 
@@ -180,7 +177,7 @@ export async function setItemStatusAction(itemId: string, status: string): Promi
     .select({ purchasedBy: furnitureItems.purchasedBy })
     .from(furnitureItems)
     .where(
-      and(eq(furnitureItems.id, itemId), eq(furnitureItems.householdId, session.user.householdId)),
+      and(eq(furnitureItems.id, itemId), eq(furnitureItems.householdId, member.householdId)),
     )
     .limit(1);
 
@@ -194,10 +191,10 @@ export async function setItemStatusAction(itemId: string, status: string): Promi
       // means "don't touch this column" in Drizzle, which would strand a
       // stale purchaser on an item moved back to needed/researching.
       purchasedBy:
-        parsedStatus === "owned" ? (existing?.purchasedBy ?? session.user.id) : null,
+        parsedStatus === "owned" ? (existing?.purchasedBy ?? member.id) : null,
     })
     .where(
-      and(eq(furnitureItems.id, itemId), eq(furnitureItems.householdId, session.user.householdId)),
+      and(eq(furnitureItems.id, itemId), eq(furnitureItems.householdId, member.householdId)),
     );
 
   revalidatePath("/furniture");
@@ -212,9 +209,8 @@ export async function addContributionAction(
   _prev: ContributionFormState,
   formData: FormData,
 ): Promise<ContributionFormState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Not signed in." };
-  if (!(await furnitureItemBelongsToHousehold(itemId, session.user.householdId))) {
+  const member = await requireMemberForAction();
+  if (!(await furnitureItemBelongsToHousehold(itemId, member.householdId))) {
     return { error: "Not found." };
   }
 
@@ -230,12 +226,12 @@ export async function addContributionAction(
 
   const [contribution] = await db
     .insert(furnitureContributions)
-    .values({ itemId, memberId: session.user.id, amountCents })
+    .values({ itemId, memberId: member.id, amountCents })
     .returning();
 
   await db.insert(ledgerEntries).values({
-    householdId: session.user.householdId,
-    memberId: session.user.id,
+    householdId: member.householdId,
+    memberId: member.id,
     type: "furniture_contribution",
     amountCents,
     sourceId: contribution.id,
@@ -247,9 +243,8 @@ export async function addContributionAction(
 }
 
 export async function removeContributionAction(contributionId: string): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
-  if (!(await furnitureContributionBelongsToHousehold(contributionId, session.user.householdId))) {
+  const member = await requireMemberForAction();
+  if (!(await furnitureContributionBelongsToHousehold(contributionId, member.householdId))) {
     throw new Error("Not found.");
   }
 

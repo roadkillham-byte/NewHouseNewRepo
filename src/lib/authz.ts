@@ -8,6 +8,7 @@ import {
   choreInstances,
   furnitureContributions,
   furnitureItems,
+  members,
 } from "@/db/schema";
 
 /**
@@ -96,6 +97,18 @@ export async function furnitureContributionBelongsToHousehold(
         eq(furnitureItems.householdId, householdId),
       ),
     )
+    .limit(1);
+  return !!row;
+}
+
+export async function memberBelongsToHousehold(
+  memberId: string,
+  householdId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: members.id })
+    .from(members)
+    .where(and(eq(members.id, memberId), eq(members.householdId, householdId)))
     .limit(1);
   return !!row;
 }

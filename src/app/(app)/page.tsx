@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireMember } from "@/lib/session";
 import { houseToday } from "@/lib/today";
 import {
   getHouseStats,
@@ -17,12 +16,11 @@ const BILL_HORIZON_DAYS = 14;
 const ACTIVITY_WINDOW_DAYS = 7;
 
 export default async function DashboardPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-  const { householdId, id: memberId } = session.user;
+  const member = await requireMember();
+  const { householdId, id: memberId } = member;
 
-  const today = houseToday();
-  const firstName = (session.user.name ?? "there").split(" ")[0];
+  const today = houseToday(new Date(), member.householdTimezone);
+  const firstName = member.name.split(" ")[0];
 
   const [chores, upcomingBills, personalOwedCents, stats, activity] = await Promise.all([
     getOutstandingChores(householdId, today),

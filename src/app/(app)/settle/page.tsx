@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/member-avatar";
-import { auth } from "@/lib/auth";
+import { requireMember } from "@/lib/session";
 import { formatMoney } from "@/lib/money";
 import { computeNetPositions, computeTransfers } from "@/lib/settlement";
 import { getLedgerEntries, getLedgerParticipants } from "@/db/queries/settlement";
@@ -14,9 +13,8 @@ const ENTRY_TYPE_LABEL: Record<string, string> = {
 };
 
 export default async function SettlePage() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-  const householdId = session.user.householdId;
+  const member = await requireMember();
+  const householdId = member.householdId;
 
   const [participants, entries] = await Promise.all([
     getLedgerParticipants(householdId),

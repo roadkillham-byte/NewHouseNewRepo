@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { choreDefinitions, choreInstances, members } from "@/db/schema";
 import { expandRule, nextRoundRobinAssignee, type RotationMember } from "./recurrence";
 import { addUtcDays, houseToday } from "./today";
+import { getHouseholdTimezone } from "@/db/queries/settings";
 
 export const MATERIALISE_WINDOW_DAYS = 60;
 
@@ -23,7 +24,7 @@ export async function materialiseChoresForHousehold(
   householdId: string,
   windowDays: number = MATERIALISE_WINDOW_DAYS,
 ): Promise<{ definitionsProcessed: number; instancesCreated: number }> {
-  const today = houseToday();
+  const today = houseToday(new Date(), await getHouseholdTimezone(householdId));
   const windowEnd = addUtcDays(today, windowDays);
 
   const definitions = await db

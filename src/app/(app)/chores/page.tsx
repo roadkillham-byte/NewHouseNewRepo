@@ -1,6 +1,5 @@
 import { endOfMonth, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireMember } from "@/lib/session";
 import { houseToday } from "@/lib/today";
 import {
   getChoreDefinitions,
@@ -21,9 +20,8 @@ export default async function ChoresPage({
 }: {
   searchParams: Promise<{ month?: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-  const householdId = session.user.householdId;
+  const member = await requireMember();
+  const householdId = member.householdId;
 
   const { month } = await searchParams;
   const monthAnchor = month && !Number.isNaN(Date.parse(month)) ? new Date(month) : new Date();
@@ -31,7 +29,7 @@ export default async function ChoresPage({
   const gridStart = startOfWeek(startOfMonth(monthAnchor), { weekStartsOn: 1 });
   const gridEnd = endOfWeek(endOfMonth(monthAnchor), { weekStartsOn: 1 });
 
-  const today = houseToday();
+  const today = houseToday(new Date(), member.householdTimezone);
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
 

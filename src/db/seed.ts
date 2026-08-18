@@ -7,10 +7,10 @@
  *
  * Safe to re-run: the household is matched by name and only created once;
  * each member is matched by email and left untouched if it already exists.
- * Everyone should change their password after first login (a "change
- * password" account setting isn't built yet — for now that means re-running
- * this script with a new password for just that member, or updating the row
- * directly).
+ * The passwords below are temporary: every seeded member is flagged
+ * `mustChangePassword`, so the app sends them to /change-password on first
+ * sign-in. Once the house exists, add and manage housemates from Settings —
+ * this script is only for bootstrapping an empty database.
  */
 import { config } from "dotenv";
 
@@ -48,7 +48,13 @@ async function main() {
     .limit(1);
 
   if (!household) {
-    [household] = await db.insert(households).values({ name: HOUSEHOLD_NAME }).returning();
+    [household] = await db
+      .insert(households)
+      .values({
+        name: HOUSEHOLD_NAME,
+        timezone: process.env.HOUSE_TIMEZONE ?? "Australia/Sydney",
+      })
+      .returning();
     console.log(`Created household "${household.name}" (${household.id})`);
   } else {
     console.log(`Household "${household.name}" already exists (${household.id})`);
@@ -73,13 +79,20 @@ async function main() {
       email: seedMember.email,
       passwordHash,
       avatarColor: AVATAR_COLORS[index % AVATAR_COLORS.length],
+      // Everyone seeded is handed a placeholder they must replace on first
+      // sign-in — see /change-password.
+      mustChangePassword: true,
     });
     console.log(
-      `Created member ${seedMember.name} <${seedMember.email}> — password: ${seedMember.password}`,
+      `Created ${seedMember.name} <${seedMember.email}> — temporary password: ${seedMember.password}`,
     );
   }
 
-  console.log("Seed complete.");
+  console.log(
+    "\nSeed complete. Everyone above signs in with their temporary password and is\n" +
+      "asked to choose their own straight away. After that, add and manage housemates\n" +
+      "from Settings inside the app rather than re-running this script.",
+  );
   process.exit(0);
 }
 

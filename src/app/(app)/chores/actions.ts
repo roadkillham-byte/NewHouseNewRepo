@@ -5,7 +5,7 @@ import { and, eq, gte } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { choreDefinitions, choreInstances } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { requireMemberForAction } from "@/lib/session";
 import { buildRRule } from "@/lib/recurrence";
 import { materialiseChoresForHousehold } from "@/lib/materialise";
 import { houseToday } from "@/lib/today";
@@ -69,8 +69,7 @@ export async function createChoreAction(
   _prev: ChoreFormState,
   formData: FormData,
 ): Promise<ChoreFormState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Not signed in." };
+  const member = await requireMemberForAction();
 
   const parsed = parseChoreForm(formData);
   if (!parsed.success) {
@@ -91,7 +90,7 @@ export async function createChoreAction(
   }
 
   await db.insert(choreDefinitions).values({
-    householdId: session.user.householdId,
+    householdId: member.householdId,
     title: data.title,
     notes: data.notes || null,
     area: data.area || null,
@@ -102,7 +101,7 @@ export async function createChoreAction(
     fixedAssigneeId: data.rotationStrategy === "fixed" ? (data.fixedAssigneeId ?? null) : null,
   });
 
-  await materialiseChoresForHousehold(session.user.householdId);
+  await materialiseChoresForHousehold(member.householdId);
   revalidatePath("/chores");
 }
 
@@ -111,8 +110,7 @@ export async function updateChoreAction(
   _prev: ChoreFormState,
   formData: FormData,
 ): Promise<ChoreFormState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Not signed in." };
+  const member = await requireMemberForAction();
 
   const parsed = parseChoreForm(formData);
   if (!parsed.success) {
@@ -145,39 +143,38 @@ export async function updateChoreAction(
       fixedAssigneeId: data.rotationStrategy === "fixed" ? (data.fixedAssigneeId ?? null) : null,
     })
     .where(
-      and(eq(choreDefinitions.id, choreId), eq(choreDefinitions.householdId, session.user.householdId)),
+      and(eq(choreDefinitions.id, choreId), eq(choreDefinitions.householdId, member.householdId)),
     );
 
   // The schedule may have changed. Clear out not-yet-happened *pending*
   // instances so the old schedule doesn't linger alongside the new one —
   // but never touch anything already done or skipped; that's real history.
-  await clearFuturePendingInstances(choreId);
-  await materialiseChoresForHousehold(session.user.householdId);
+  await clearFuturePendingInstances(choreId, member.householdTimezone);
+  await materialiseChoresForHousehold(member.householdId);
   revalidatePath("/chores");
 }
 
 export async function setChoreActiveAction(choreId: string, active: boolean): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
+  const member = await requireMemberForAction();
 
   await db
     .update(choreDefinitions)
     .set({ active })
     .where(
-      and(eq(choreDefinitions.id, choreId), eq(choreDefinitions.householdId, session.user.householdId)),
+      and(eq(choreDefinitions.id, choreId), eq(choreDefinitions.householdId, member.householdId)),
     );
 
   if (active) {
-    await materialiseChoresForHousehold(session.user.householdId);
+    await materialiseChoresForHousehold(member.householdId);
   } else {
     // Deactivating: stop showing it as due going forward, but keep history.
-    await clearFuturePendingInstances(choreId);
+    await clearFuturePendingInstances(choreId, member.householdTimezone);
   }
   revalidatePath("/chores");
 }
 
-async function clearFuturePendingInstances(definitionId: string): Promise<void> {
-  const today = houseToday();
+async function clearFuturePendingInstances(definitionId: string, timeZone: string): Promise<void> {
+  const today = houseToday(new Date(), timeZone);
   await db
     .delete(choreInstances)
     .where(
@@ -196,23 +193,21 @@ async function clearFuturePendingInstances(definitionId: string): Promise<void> 
  * page and the dashboard.
  */
 async function requireOwnedInstance(instanceId: string): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
-  if (!(await choreInstanceBelongsToHousehold(instanceId, session.user.householdId))) {
+  const member = await requireMemberForAction();
+  if (!(await choreInstanceBelongsToHousehold(instanceId, member.householdId))) {
     throw new Error("Not found.");
   }
 }
 
 export async function completeInstanceAction(instanceId: string): Promise<void> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Not signed in.");
-  if (!(await choreInstanceBelongsToHousehold(instanceId, session.user.householdId))) {
+  const member = await requireMemberForAction();
+  if (!(await choreInstanceBelongsToHousehold(instanceId, member.householdId))) {
     throw new Error("Not found.");
   }
 
   await db
     .update(choreInstances)
-    .set({ status: "done", completedAt: new Date(), completedBy: session.user.id })
+    .set({ status: "done", completedAt: new Date(), completedBy: member.id })
     .where(eq(choreInstances.id, instanceId));
   revalidatePath("/chores");
   revalidatePath("/");
