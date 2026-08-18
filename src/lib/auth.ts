@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { members } from "@/db/schema";
 import { authConfig } from "./auth.config";
+import { isRateLimited, recordLoginAttempt } from "./rate-limit";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -26,16 +27,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
 
+        // Refuse before touching the password so a locked-out email costs an
+        // attacker a cheap query rather than a bcrypt compare.
+        if (await isRateLimited(email)) return null;
+
         const [member] = await db
           .select()
           .from(members)
           .where(eq(members.email, email.toLowerCase()))
           .limit(1);
 
-        if (!member || !member.active) return null;
+        if (!member || !member.active) {
+          await recordLoginAttempt(email, false);
+          return null;
+        }
 
         const passwordMatches = await bcrypt.compare(password, member.passwordHash);
-        if (!passwordMatches) return null;
+        if (!passwordMatches) {
+          await recordLoginAttempt(email, false);
+          return null;
+        }
+
+        await recordLoginAttempt(email, true);
 
         return {
           id: member.id,

@@ -41,6 +41,16 @@ export function Timeline({ periods, today }: { periods: BillPeriodTimelineRow[];
   );
 }
 
+/**
+ * "Marked paid by Sam, 3 Sep" — but when the person who paid recorded it
+ * themselves, naming them twice reads oddly, so that case just says when.
+ */
+function describePayment(paidAt: Date, markedByName: string | null, ownerName: string): string {
+  const when = paidAt.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+  if (!markedByName || markedByName === ownerName) return `Paid ${when}`;
+  return `Marked paid by ${markedByName}, ${when}`;
+}
+
 function PeriodRow({ row, today }: { row: BillPeriodTimelineRow; today: Date }) {
   const { period, bill, shares } = row;
   const status = computeBillPeriodStatus(
@@ -50,7 +60,7 @@ function PeriodRow({ row, today }: { row: BillPeriodTimelineRow; today: Date }) 
   );
 
   return (
-    <li className="space-y-2 py-3">
+    <li className="space-y-2 py-3" data-testid="bill-period" data-bill={bill.name}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium">{bill.name}</p>
@@ -71,15 +81,28 @@ function PeriodRow({ row, today }: { row: BillPeriodTimelineRow; today: Date }) 
         <AmountEntryForm periodId={period.id} />
       ) : (
         <ul className="space-y-1.5 pl-1">
-          {shares.map(({ share, member }) => (
-            <li key={share.id} className="flex items-center justify-between gap-2 text-sm">
-              <div className="flex items-center gap-2">
-                <MemberAvatar name={member.name} color={member.avatarColor} className="h-5 w-5" />
-                <span>{member.name}</span>
-                <span className="text-muted-foreground">{formatMoney(share.amountOwedCents)}</span>
+          {shares.map(({ share, member, markedBy }) => (
+            <li key={share.id} className="flex items-start justify-between gap-2 text-sm">
+              <div className="flex items-start gap-2">
+                <MemberAvatar
+                  name={member.name}
+                  color={member.avatarColor}
+                  className="mt-0.5 h-5 w-5"
+                />
+                <div>
+                  <span>{member.name}</span>{" "}
+                  <span className="text-muted-foreground">
+                    {formatMoney(share.amountOwedCents)}
+                  </span>
+                  {share.paidAt ? (
+                    <p className="text-xs text-muted-foreground">
+                      {describePayment(share.paidAt, markedBy?.name ?? null, member.name)}
+                    </p>
+                  ) : null}
+                </div>
               </div>
               {share.paidAt ? (
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <Badge variant="outline">Paid</Badge>
                   <UnmarkPaidButton shareId={share.id} />
                 </div>

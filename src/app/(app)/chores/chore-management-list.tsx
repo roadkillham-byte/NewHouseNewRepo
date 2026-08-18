@@ -81,7 +81,11 @@ function ChoreRow({
     : "One-off";
 
   return (
-    <li className="flex items-center justify-between gap-3 py-3">
+    <li
+      className="flex items-center justify-between gap-3 py-3"
+      data-testid="chore-definition"
+      data-chore={definition.title}
+    >
       <div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{definition.title}</span>

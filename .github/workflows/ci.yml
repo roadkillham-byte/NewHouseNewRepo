@@ -5,35 +5,91 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  # Used by both jobs. Not a secret: it only ever points at a throwaway
+  # Postgres started for the run.
+  TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/houseos_test
+  TEST_AUTH_SECRET: ci-only-not-a-real-secret-0000000000000000
+
 jobs:
-  verify:
+  # Fast feedback: everything that needs no database.
+  static:
+    name: Lint, typecheck, unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - run: npm ci
-
       - name: Lint
         run: npm run lint
-
       - name: Typecheck
         run: npm run typecheck
-
       - name: Unit tests
         run: npm run test
+
+  # The slower one: a real Postgres, real migrations, real browser.
+  e2e:
+    name: End-to-end against Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: houseos_test
+        ports:
+          - 5432:5432
+        # Don't start the job until the database actually accepts connections.
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run migrations
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+
+      - name: Seed the household
+        run: npm run db:seed
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          HOUSE_TIMEZONE: Australia/Sydney
 
       - name: Build
         run: npm run build
         env:
-          # Build-time only — no real database connection is made. Syntactically
-          # valid so module-level config (drizzle, the postgres client) doesn't
-          # throw while Next collects route data. Real deploys set the actual
-          # Supabase URL and secrets as project environment variables.
-          DATABASE_URL: "postgresql://user:password@localhost:5432/postgres"
-          AUTH_SECRET: "ci-build-only-not-a-real-secret"
-          NEXTAUTH_URL: "http://localhost:3000"
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          AUTH_SECRET: ${{ env.TEST_AUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          AUTH_SECRET: ${{ env.TEST_AUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+          CRON_SECRET: ci-only-cron-secret
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

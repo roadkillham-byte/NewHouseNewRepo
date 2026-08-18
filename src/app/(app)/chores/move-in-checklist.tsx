@@ -24,7 +24,12 @@ export function MoveInChecklist({ rows }: { rows: MoveInChecklistRow[] }) {
         ) : (
           <ul className="divide-y">
             {rows.map(({ definition, instance, assignee }) => (
-              <li key={definition.id} className="flex items-center justify-between gap-3 py-2.5">
+              <li
+                key={definition.id}
+                className="flex items-center justify-between gap-3 py-2.5"
+                data-testid="checklist-item"
+                data-chore={definition.title}
+              >
                 <div className="flex items-center gap-3">
                   <MemberAvatar name={assignee?.name} color={assignee?.avatarColor} />
                   <span

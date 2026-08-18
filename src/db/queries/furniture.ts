@@ -26,20 +26,36 @@ export async function getFurnitureItems(householdId: string) {
 
   const totalsByItem = new Map(totals.map((t) => [t.itemId, t.totalCents]));
 
-  return items.map((row) => ({ ...row, contributedCents: totalsByItem.get(row.item.id) ?? 0 }));
+  // Individual contributions, so a card can show who chipped in what and
+  // offer to undo a mistaken entry.
+  const contributionRows = await db
+    .select({
+      id: furnitureContributions.id,
+      itemId: furnitureContributions.itemId,
+      amountCents: furnitureContributions.amountCents,
+      memberName: members.name,
+      memberColor: members.avatarColor,
+    })
+    .from(furnitureContributions)
+    .innerJoin(members, eq(furnitureContributions.memberId, members.id))
+    .where(inArray(furnitureContributions.itemId, itemIds))
+    .orderBy(asc(furnitureContributions.createdAt));
+
+  const contributionsByItem = new Map<string, typeof contributionRows>();
+  for (const row of contributionRows) {
+    const existing = contributionsByItem.get(row.itemId);
+    if (existing) existing.push(row);
+    else contributionsByItem.set(row.itemId, [row]);
+  }
+
+  return items.map((row) => ({
+    ...row,
+    contributedCents: totalsByItem.get(row.item.id) ?? 0,
+    contributions: contributionsByItem.get(row.item.id) ?? [],
+  }));
 }
 
 export type FurnitureItemRow = Awaited<ReturnType<typeof getFurnitureItems>>[number];
-
-/** Contributions for one item, joined to the contributing member — for the item detail / contribution log. */
-export async function getItemContributions(itemId: string) {
-  return db
-    .select({ contribution: furnitureContributions, member: members })
-    .from(furnitureContributions)
-    .innerJoin(members, eq(furnitureContributions.memberId, members.id))
-    .where(eq(furnitureContributions.itemId, itemId))
-    .orderBy(asc(furnitureContributions.createdAt));
-}
 
 /** Adapts joined furniture rows to the shape computeBudgetRollup() takes (see src/lib/budget.ts). */
 export function toBudgetInput(items: FurnitureItemRow[]): BudgetInputItem[] {

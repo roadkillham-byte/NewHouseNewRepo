@@ -22,7 +22,7 @@ export function FairnessLedger({ rows }: { rows: FairnessRow[] }) {
           <p className="text-sm text-muted-foreground">No completed chores yet.</p>
         ) : (
           rows.map((row) => (
-            <div key={row.memberId} className="flex items-center gap-3">
+            <div key={row.memberId} className="flex items-center gap-3" data-testid="fairness-row" data-member={row.name}>
               <MemberAvatar name={row.name} color={row.avatarColor} />
               <div className="flex-1">
                 <div className="flex items-center justify-between text-sm">

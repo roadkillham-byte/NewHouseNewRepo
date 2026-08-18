@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { billPeriods, bills, billShares, members } from "@/db/schema";
 
@@ -27,10 +28,16 @@ export async function getBillPeriodsForTimeline(householdId: string, start: Date
   if (periods.length === 0) return [];
 
   const periodIds = periods.map((p) => p.period.id);
+  // Second join on members for whoever marked the share paid — that's the
+  // audit trail that makes honour-system tracking defensible, and it's a
+  // different person from the share's owner often enough to matter (someone
+  // hands over cash, someone else records it).
+  const markedByMember = alias(members, "marked_by_member");
   const shareRows = await db
-    .select({ share: billShares, member: members })
+    .select({ share: billShares, member: members, markedBy: markedByMember })
     .from(billShares)
     .innerJoin(members, eq(billShares.memberId, members.id))
+    .leftJoin(markedByMember, eq(billShares.markedBy, markedByMember.id))
     .where(inArray(billShares.periodId, periodIds));
 
   const sharesByPeriod = new Map<string, typeof shareRows>();

@@ -10,6 +10,7 @@ import { ItemDialog } from "./item-dialog";
 import { emptyItemFormDefaults, type ItemFormDefaults } from "./item-form";
 import { createItemAction, setItemStatusAction, updateItemAction } from "./actions";
 import { ContributionsPanel } from "./contributions-panel";
+import { ContributionList } from "./contribution-list";
 
 type Status = "needed" | "researching" | "ordered" | "owned";
 
@@ -82,7 +83,7 @@ export function StatusBoard({ items }: { items: FurnitureItemRow[] }) {
 
 function ItemCard({ row }: { row: FurnitureItemRow }) {
   const [isPending, startTransition] = useTransition();
-  const { item, purchasedBy, contributedCents } = row;
+  const { item, purchasedBy, contributedCents, contributions } = row;
   const nextStatus = NEXT_STATUS[item.status as Status];
 
   const defaults: ItemFormDefaults = {
@@ -129,13 +130,23 @@ function ItemCard({ row }: { row: FurnitureItemRow }) {
       ) : null}
 
       {item.fundingSource === "house" ? (
-        <ContributionsPanel
-          itemId={item.id}
-          contributedCents={contributedCents}
-          targetCents={price}
-          isOwned={item.status === "owned"}
-          purchaserName={purchasedBy?.name ?? null}
-        />
+        <div className="space-y-1.5">
+          <ContributionsPanel
+            itemId={item.id}
+            contributedCents={contributedCents}
+            targetCents={price}
+            isOwned={item.status === "owned"}
+            purchaserName={purchasedBy?.name ?? null}
+          />
+          <ContributionList
+            contributions={contributions.map((c) => ({
+              id: c.id,
+              amountCents: c.amountCents,
+              memberName: c.memberName,
+              memberColor: c.memberColor,
+            }))}
+          />
+        </div>
       ) : (
         <Badge variant="outline">One person</Badge>
       )}

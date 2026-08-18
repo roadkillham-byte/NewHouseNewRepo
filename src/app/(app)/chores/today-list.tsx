@@ -16,7 +16,12 @@ export function TodayList({ chores }: { chores: ChoreInstanceRow[] }) {
         ) : (
           <ul className="divide-y">
             {chores.map(({ instance, definition, assignee }) => (
-              <li key={instance.id} className="flex items-center justify-between gap-3 py-3">
+              <li
+                key={instance.id}
+                className="flex items-center justify-between gap-3 py-3"
+                data-testid="today-chore"
+                data-chore={definition.title}
+              >
                 <div className="flex items-center gap-3">
                   <MemberAvatar name={assignee?.name} color={assignee?.avatarColor} />
                   <div>

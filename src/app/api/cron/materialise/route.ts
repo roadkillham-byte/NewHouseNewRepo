@@ -3,10 +3,11 @@ import { db } from "@/db";
 import { households } from "@/db/schema";
 import { materialiseChoresForHousehold } from "@/lib/materialise";
 import { materialiseBillsForHousehold } from "@/lib/materialise-bills";
+import { pruneLoginAttempts } from "@/lib/rate-limit";
 
 /**
  * Daily materialise job. Rolls the chore-instance and bill-period windows
- * forward and backfills anything missing.
+ * forward, backfills anything missing, and prunes expired login attempts.
  *
  * Authenticated via CRON_SECRET (a bearer token), not a user session — this
  * route is explicitly excluded from proxy.ts's auth matcher. Configure the
@@ -32,5 +33,15 @@ export async function GET(request: NextRequest) {
     results.push({ householdId: household.id, name: household.name, chores, bills });
   }
 
-  return NextResponse.json({ ok: true, ranAt: new Date().toISOString(), results });
+  // Housekeeping: login attempts only exist to power the rate limiter's
+  // 15-minute window, so anything older than the retention period is dead
+  // weight.
+  const prunedLoginAttempts = await pruneLoginAttempts();
+
+  return NextResponse.json({
+    ok: true,
+    ranAt: new Date().toISOString(),
+    results,
+    prunedLoginAttempts,
+  });
 }

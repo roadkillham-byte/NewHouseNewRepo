@@ -2,7 +2,11 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  // The suite shares one database and creates household-wide rows, so
+  // running specs in parallel would have them reading each other's chores
+  // and bills. It's a small suite; serial is the honest trade.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
@@ -27,7 +31,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run build && npm run start",
+    command: process.env.CI ? "npm run start" : "npm run build && npm run start",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

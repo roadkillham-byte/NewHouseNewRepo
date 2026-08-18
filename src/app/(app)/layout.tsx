@@ -3,12 +3,28 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth";
 import { requireMember } from "@/lib/session";
 import { BottomNav, NavLinks } from "@/components/nav-links";
+import { DatabaseWaking } from "@/components/database-waking";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { isDatabaseUnreachable } from "@/lib/db-errors";
+import type { CurrentMember } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Read fresh rather than from the JWT, so a renamed or deactivated member
   // is reflected on the very next request — see src/lib/session.ts.
-  const member = await requireMember();
+  //
+  // This is the app's first database call, and an error.tsx does not wrap
+  // the layout in its own segment, so a sleeping database escapes the
+  // boundaries entirely. Catch it here and say something useful. Anything
+  // else — including the NEXT_REDIRECT that requireMember() throws to send
+  // a signed-out visitor to /login — has to keep propagating.
+  let member: CurrentMember;
+  try {
+    member = await requireMember();
+  } catch (error) {
+    if (isDatabaseUnreachable(error)) return <DatabaseWaking />;
+    throw error;
+  }
+
   if (member.mustChangePassword) {
     redirect("/change-password");
   }

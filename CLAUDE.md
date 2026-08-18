@@ -25,8 +25,8 @@ floats. `src/lib/money.ts` is the only place currency is formatted/parsed;
 `src/lib/split.ts` is the only place a bill total is divided across people.
 Don't do either conversion inline elsewhere.
 
-**Build status:** All five planned phases are done, plus roadmap Stage 1
-(settings & accounts). Phase 0: foundation.
+**Build status:** All five planned phases are done, plus roadmap Stages 1
+(settings & accounts) and 2 (resilience). Phase 0: foundation.
 Phase 1: chores — recurring/one-off definitions, month calendar, today's
 list, round-robin rotation, fairness ledger, move-in checklist. Phase 2:
 bills — fixed and variable-amount bills, a due-date timeline, even-split
@@ -42,6 +42,10 @@ Stage 1 added: a settings page (house name + timezone, housemate
 management, your own profile and password), accounts created in-app with a
 generated temporary password, and a forced password change on first
 sign-in. Adding a housemate no longer means editing `seed.ts`.
+
+Stage 2 added: error/loading/not-found boundaries, database-backed login
+rate limiting, the payment audit trail surfaced in the UI, and a CI job
+that runs the E2E suite against a real Postgres.
 
 The daily *email* digest from the original plan is **not** built — the
 in-app dashboard covers the checkpoint need, and email needs a provider
@@ -187,6 +191,43 @@ re-run after editing.
   clears *future pending* instances before re-materialising — done/skipped
   history is never touched. `src/db/queries/chores.ts` holds the read-side
   joins (today's list, calendar range, fairness ledger, move-in checklist).
+
+## Error handling
+
+- **A sleeping database is decided server-side, not in `error.tsx`.** In
+  production Next.js redacts server errors before they reach the client, so
+  a client boundary only ever sees an empty `Error` plus a digest and can't
+  tell a connection failure from anything else. `(app)/layout.tsx` catches
+  the first DB call itself and renders `src/components/database-waking.tsx`
+  — rethrowing anything that isn't a connection failure, which is what lets
+  `requireMember()`'s `NEXT_REDIRECT` still reach `/login`.
+  `src/lib/db-errors.ts` does the classification and is unit-tested.
+- **`error.tsx` never wraps the `layout.tsx` in its own segment** (Next.js
+  docs, `error.md`). The app's first database call is in the authenticated
+  layout, so `(app)/error.tsx` cannot catch it — hence the root
+  `src/app/error.tsx` and the server-side catch above. Both client
+  boundaries are deliberately generic.
+- **Login rate limiting is a table, not memory** (`src/lib/rate-limit.ts`,
+  `login_attempts`). An in-memory counter is worse than none on serverless:
+  each instance keeps its own tally, so spreading requests across cold
+  starts never trips it. Five failures per email in fifteen minutes; a
+  success clears the failures; the cron route prunes old rows.
+
+## Testing
+
+- Unit tests cover the pure logic in `src/lib/`. Anything importing
+  `src/db/` can't be unit-tested (the Postgres client is evaluated at module
+  load), which is why pure functions live in `src/lib/`.
+- **E2E runs against a real Postgres**, in CI and locally. The suite shares
+  one seeded household and runs **serially** (`workers: 1`) — the specs
+  create household-wide chores and bills, so parallel runs read each other's
+  rows. Two conventions keep it stable: rows are located by `data-testid` +
+  `data-*` (a recurring definition fans out into dozens of same-titled
+  rows), and names are suffixed with `Date.now()` so a re-run against a
+  dirty database doesn't collide. Assert **invariants, not magic numbers** —
+  a hardcoded `$30.10` share broke the moment another spec added a fifth
+  housemate; `expectEvenSplit()` in `e2e/bills.spec.ts` checks the split is
+  equal to within a cent and sums to the total instead.
 
 ## Verifying against a real database
 
