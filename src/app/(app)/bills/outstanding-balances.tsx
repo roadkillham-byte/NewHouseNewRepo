@@ -1,5 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/member-avatar";
+import { PartyPopper } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { formatMoney } from "@/lib/money";
 
 interface BalanceRow {
@@ -20,7 +22,11 @@ export function OutstandingBalances({ rows }: { rows: BalanceRow[] }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {totalOwed === 0 ? (
-          <p className="text-sm text-muted-foreground">Everyone&apos;s square. 🎉</p>
+          <EmptyState
+            icon={PartyPopper}
+            title="Everyone's square"
+            hint="Nobody owes the house anything right now."
+          />
         ) : (
           rows
             .filter((r) => r.owedCents > 0)
@@ -30,7 +36,7 @@ export function OutstandingBalances({ rows }: { rows: BalanceRow[] }) {
                   <MemberAvatar name={row.name} color={row.avatarColor} />
                   <span className="text-sm">{row.name}</span>
                 </div>
-                <span className="text-sm font-medium">{formatMoney(row.owedCents)}</span>
+                <span className="numeric text-sm font-medium">{formatMoney(row.owedCents)}</span>
               </div>
             ))
         )}

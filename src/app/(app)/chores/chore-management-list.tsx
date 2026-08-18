@@ -4,6 +4,8 @@ import { useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ListChecks } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { describeRule, parseRRuleToInput } from "@/lib/recurrence";
 import type { ChoreDefinitionRow } from "@/db/queries/chores";
 import { ChoreDialog } from "./chore-dialog";
@@ -36,7 +38,11 @@ export function ChoreManagementList({
       </CardHeader>
       <CardContent>
         {chores.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No chores yet — add the first one above.</p>
+          <EmptyState
+            icon={ListChecks}
+            title="No chores yet"
+            hint="Add the first one above and it'll fan out across the calendar."
+          />
         ) : (
           <ul className="divide-y">
             {chores.map(({ definition, fixedAssignee }) => (

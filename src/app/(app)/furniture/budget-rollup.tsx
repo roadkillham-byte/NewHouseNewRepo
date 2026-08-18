@@ -1,4 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Ruler } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { formatMoney } from "@/lib/money";
 import { HOUSE_TOTAL_KEY, type RoomRollup } from "@/lib/budget";
 
@@ -17,15 +19,15 @@ export function BudgetRollup({ rows }: { rows: RoomRollup[] }) {
           <div className="space-y-1.5 rounded-md bg-muted/50 p-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Spent</span>
-              <span className="font-medium">{formatMoney(house.actualCents)}</span>
+              <span className="numeric font-medium">{formatMoney(house.actualCents)}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Still to buy (est.)</span>
-              <span className="font-medium">{formatMoney(house.estimatedCents)}</span>
+              <span className="numeric font-medium">{formatMoney(house.estimatedCents)}</span>
             </div>
             <div className="flex items-center justify-between border-t pt-1.5 text-sm">
               <span className="text-muted-foreground">Projected total</span>
-              <span className="font-semibold">
+              <span className="numeric font-semibold">
                 {formatMoney(house.actualCents + house.estimatedCents)}
               </span>
             </div>
@@ -33,7 +35,11 @@ export function BudgetRollup({ rows }: { rows: RoomRollup[] }) {
         ) : null}
 
         {rooms.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No items tracked yet.</p>
+          <EmptyState
+            icon={Ruler}
+            title="Nothing to add up yet"
+            hint="Costs roll up by room as items are added."
+          />
         ) : (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">By room</p>
@@ -46,7 +52,7 @@ export function BudgetRollup({ rows }: { rows: RoomRollup[] }) {
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="font-medium">{formatMoney(room.actualCents)}</p>
+                  <p className="numeric font-medium">{formatMoney(room.actualCents)}</p>
                   {room.estimatedCents > 0 ? (
                     <p className="text-xs text-muted-foreground">
                       +{formatMoney(room.estimatedCents)} est.

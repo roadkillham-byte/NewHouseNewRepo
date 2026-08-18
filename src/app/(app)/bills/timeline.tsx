@@ -1,5 +1,7 @@
-import { Badge } from "@/components/ui/badge";
+import { CalendarClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/status-badge";
 import { MemberAvatar } from "@/components/member-avatar";
 import { formatMoney } from "@/lib/money";
 import { computeBillPeriodStatus, type BillPeriodDisplayStatus } from "@/lib/bill-status";
@@ -13,11 +15,11 @@ const STATUS_LABEL: Record<BillPeriodDisplayStatus, string> = {
   upcoming: "Upcoming",
 };
 
-const STATUS_VARIANT: Record<BillPeriodDisplayStatus, "default" | "secondary" | "destructive" | "outline"> = {
-  settled: "outline",
-  overdue: "destructive",
-  due_today: "default",
-  upcoming: "secondary",
+const STATUS_TONE: Record<BillPeriodDisplayStatus, StatusTone> = {
+  settled: "settled",
+  overdue: "overdue",
+  due_today: "due",
+  upcoming: "neutral",
 };
 
 export function Timeline({ periods, today }: { periods: BillPeriodTimelineRow[]; today: Date }) {
@@ -28,7 +30,11 @@ export function Timeline({ periods, today }: { periods: BillPeriodTimelineRow[];
       </CardHeader>
       <CardContent>
         {periods.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No bills due in this window.</p>
+          <EmptyState
+            icon={CalendarClock}
+            title="Nothing due in this window"
+            hint="Bills you add appear here from a fortnight back to three months ahead."
+          />
         ) : (
           <ul className="divide-y">
             {periods.map((row) => (
@@ -71,9 +77,9 @@ function PeriodRow({ row, today }: { row: BillPeriodTimelineRow; today: Date }) 
         </div>
         <div className="flex items-center gap-2">
           {period.totalCents !== null ? (
-            <span className="text-sm font-medium">{formatMoney(period.totalCents)}</span>
+            <span className="numeric text-sm font-medium">{formatMoney(period.totalCents)}</span>
           ) : null}
-          <Badge variant={STATUS_VARIANT[status]}>{STATUS_LABEL[status]}</Badge>
+          <StatusBadge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</StatusBadge>
         </div>
       </div>
 
@@ -91,7 +97,7 @@ function PeriodRow({ row, today }: { row: BillPeriodTimelineRow; today: Date }) 
                 />
                 <div>
                   <span>{member.name}</span>{" "}
-                  <span className="text-muted-foreground">
+                  <span className="numeric text-muted-foreground">
                     {formatMoney(share.amountOwedCents)}
                   </span>
                   {share.paidAt ? (
@@ -103,7 +109,7 @@ function PeriodRow({ row, today }: { row: BillPeriodTimelineRow; today: Date }) 
               </div>
               {share.paidAt ? (
                 <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant="outline">Paid</Badge>
+                  <StatusBadge tone="settled">Paid</StatusBadge>
                   <UnmarkPaidButton shareId={share.id} />
                 </div>
               ) : (

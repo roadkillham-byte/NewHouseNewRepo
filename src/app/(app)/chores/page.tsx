@@ -1,4 +1,6 @@
 import { endOfMonth, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
+import { CalendarCheck } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { requireMember } from "@/lib/session";
 import { houseToday } from "@/lib/today";
 import {
@@ -46,10 +48,12 @@ export default async function ChoresPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Chores</h1>
-        <p className="text-muted-foreground">Who&apos;s doing what, and when.</p>
-      </div>
+      <PageHeader
+        title="Chores"
+        description="Who's doing what, and when."
+        icon={CalendarCheck}
+        accent="chores"
+      />
 
       {/* min-w-0 on the grid children: without it they default to
           min-width:auto and refuse to shrink below their widest content,

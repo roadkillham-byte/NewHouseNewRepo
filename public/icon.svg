@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="House OS">
+  <rect width="512" height="512" rx="112" fill="#3c674f"/>
+  <path d="M256 116 108 240v156h296V240Z" fill="none" stroke="#f5f7f3" stroke-width="34" stroke-linejoin="round"/>
+  <path d="M196 396V284h120v112" fill="none" stroke="#f5f7f3" stroke-width="34" stroke-linejoin="round"/>
+</svg>

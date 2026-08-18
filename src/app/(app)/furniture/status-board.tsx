@@ -8,6 +8,8 @@ import { formatMoney } from "@/lib/money";
 import type { FurnitureItemRow } from "@/db/queries/furniture";
 import { ItemDialog } from "./item-dialog";
 import { emptyItemFormDefaults, type ItemFormDefaults } from "./item-form";
+import { Sofa } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { createItemAction, setItemStatusAction, updateItemAction } from "./actions";
 import { ContributionsPanel } from "./contributions-panel";
 import { ContributionList } from "./contribution-list";
@@ -49,9 +51,11 @@ export function StatusBoard({ items }: { items: FurnitureItemRow[] }) {
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nothing tracked yet — add the first item above.
-          </p>
+          <EmptyState
+            icon={Sofa}
+            title="Nothing tracked yet"
+            hint="Add the first item above — what the house needs, and what it might cost."
+          />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {COLUMNS.map((column) => {
@@ -110,7 +114,7 @@ function ItemCard({ row }: { row: FurnitureItemRow }) {
           </p>
         </div>
         {price !== null ? (
-          <span className="shrink-0 text-xs font-medium">{formatMoney(price)}</span>
+          <span className="numeric shrink-0 text-xs font-medium">{formatMoney(price)}</span>
         ) : null}
       </div>
 

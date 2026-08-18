@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { CalendarClock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/member-avatar";
+import { EmptyState } from "@/components/empty-state";
+import { StatusBadge } from "@/components/status-badge";
 import { formatMoney } from "@/lib/money";
 import { computeBillPeriodStatus } from "@/lib/bill-status";
 import type { UpcomingBillRow } from "@/db/queries/dashboard";
@@ -28,7 +30,11 @@ export function BillCheckpoint({
       </CardHeader>
       <CardContent className="space-y-3">
         {periods.length === 0 ? (
-          <p className="text-sm text-muted-foreground">You&apos;re clear for now.</p>
+          <EmptyState
+            icon={CalendarClock}
+            title="You're clear for now"
+            hint="Anything falling due in the next fortnight shows up here."
+          />
         ) : (
           <ul className="divide-y">
             {periods.map((row) => {
@@ -45,8 +51,12 @@ export function BillCheckpoint({
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm">{row.bill.name}</p>
-                      {status === "overdue" ? <Badge variant="destructive">Overdue</Badge> : null}
-                      {status === "due_today" ? <Badge>Due today</Badge> : null}
+                      {status === "overdue" ? (
+                        <StatusBadge tone="overdue">Overdue</StatusBadge>
+                      ) : null}
+                      {status === "due_today" ? (
+                        <StatusBadge tone="due">Due today</StatusBadge>
+                      ) : null}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {row.period.totalCents !== null
@@ -68,14 +78,14 @@ export function BillCheckpoint({
                             color={myShare.member.avatarColor}
                             className="h-5 w-5"
                           />
-                          <span className="text-sm font-medium">
+                          <span className="numeric text-sm font-medium">
                             {formatMoney(myShare.share.amountOwedCents)}
                           </span>
                         </div>
                         <MarkPaidButton shareId={myShare.share.id} />
                       </>
                     ) : myShare ? (
-                      <Badge variant="outline">You&apos;ve paid</Badge>
+                      <StatusBadge tone="settled">You&apos;ve paid</StatusBadge>
                     ) : null}
                   </div>
                 </li>

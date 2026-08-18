@@ -37,7 +37,7 @@ function ContributionRow({ contribution }: { contribution: ContributionEntry }) 
           className="h-4 w-4"
         />
         <span className="truncate">{contribution.memberName}</span>
-        <span className="text-muted-foreground">{formatMoney(contribution.amountCents)}</span>
+        <span className="numeric text-muted-foreground">{formatMoney(contribution.amountCents)}</span>
       </span>
       <Button
         size="sm"

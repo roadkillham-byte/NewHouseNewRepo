@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth";
 import { requireMember } from "@/lib/session";
 import { BottomNav, NavLinks } from "@/components/nav-links";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { DatabaseWaking } from "@/components/database-waking";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { isDatabaseUnreachable } from "@/lib/db-errors";
@@ -40,11 +41,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
-            House OS
+          {/* The house's own name, not the product's — it is the one place
+              the app should feel like theirs. Editable in Settings. */}
+          <Link
+            href="/"
+            className="min-w-0 truncate font-heading text-lg font-semibold tracking-tight"
+            title={member.householdName}
+          >
+            {member.householdName}
           </Link>
           <NavLinks />
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
+            <ThemeToggle className="hidden sm:inline-flex" />
             <Avatar
               className="h-8 w-8"
               style={{ backgroundColor: member.avatarColor }}

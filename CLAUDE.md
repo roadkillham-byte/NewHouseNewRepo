@@ -26,7 +26,7 @@ floats. `src/lib/money.ts` is the only place currency is formatted/parsed;
 Don't do either conversion inline elsewhere.
 
 **Build status:** All five planned phases are done, plus roadmap Stages 1
-(settings & accounts) and 2 (resilience). Phase 0: foundation.
+(settings & accounts), 2 (resilience) and 3 (visual identity). Phase 0: foundation.
 Phase 1: chores — recurring/one-off definitions, month calendar, today's
 list, round-robin rotation, fairness ledger, move-in checklist. Phase 2:
 bills — fixed and variable-amount bills, a due-date timeline, even-split
@@ -46,6 +46,12 @@ sign-in. Adding a housemate no longer means editing `seed.ts`.
 Stage 2 added: error/loading/not-found boundaries, database-backed login
 rate limiting, the payment audit trail surfaced in the UI, and a CI job
 that runs the E2E suite against a real Postgres.
+
+Stage 3 added: a warm domestic palette (sage brand, module accents, a
+separate semantic status set) replacing the greyscale default, a Karla /
+Source Sans 3 pairing, a working light/dark/system theme toggle, the
+household's own name in the header, shared `PageHeader`/`EmptyState`/
+`StatusBadge` components, and a real PWA manifest with icons.
 
 The daily *email* digest from the original plan is **not** built — the
 in-app dashboard covers the checkpoint need, and email needs a provider
@@ -82,6 +88,43 @@ and fill in a Supabase `DATABASE_URL` (and `AUTH_SECRET` — generate with
 To seed your household: edit the household name and member list at the top
 of `src/db/seed.ts`, then run `npm run db:seed`. It's idempotent — safe to
 re-run after editing.
+
+## Design system
+
+- **`src/app/globals.css` is the whole palette**, in oklch, for both themes.
+  Components consume it through the standard shadcn token names, so
+  retinting never means editing components. Every text-on-surface pair
+  clears WCAG AA (>= 4.5:1) in both themes; the ratios were **computed, not
+  eyeballed**, and any new colour should be checked the same way.
+- **Two token sets sit alongside the shadcn ones and must not be blurred
+  together.** `--module-*` (chores sage, bills ochre, furniture clay, settle
+  indigo, settings neutral) is *identity* — which part of the house you're
+  in. `--status-*` (`overdue`, `due`, `settled`, `neutral`, each with a
+  `-soft` background) is *state*. Never use a module accent to convey state:
+  if a module's accent starts meaning "this is fine", the status colours
+  stop reading. Status is always rendered via
+  `src/components/status-badge.tsx`, never a raw `Badge variant`.
+- **The direction is one step from the generic version of itself.** If it
+  starts looking like cream-and-terracotta, push the neutral further from
+  beige and keep clay confined to furniture — don't add more colour.
+- **Typography:** Karla for headings (`font-heading`, applied to `h1`–`h4`
+  and `CardTitle`), Source Sans 3 for body. Money and counts get the
+  `.numeric` utility (tabular figures) so columns line up.
+- **Theme:** `next-themes` via `src/components/theme-provider.tsx`,
+  `attribute="class"`, toggled from the header and Settings.
+  `suppressHydrationWarning` on `<html>` is **required** — next-themes
+  writes the class before React hydrates. The toggle detects hydration with
+  `useSyncExternalStore`, not `setState` in an effect (the lint rule
+  `react-hooks/set-state-in-effect` rejects the latter).
+- **Shared shells:** `src/components/page-header.tsx` (title, description,
+  module icon, accent rule) and `src/components/empty-state.tsx`. An empty
+  list should say what to do next, not just that it is empty.
+- **PWA:** `src/app/manifest.ts` plus icons in `public/`, generated from
+  `public/icon.svg`. The manifest is static at build time, so the *installed*
+  app is called "House OS" even though the in-app header shows the
+  household's name — making it per-household needs a dynamic route and
+  isn't worth it for one house. `/login` also keeps the product name, since
+  there's no household in context yet.
 
 ## Architecture notes
 
@@ -124,6 +167,9 @@ re-run after editing.
   read fresh per request. Pages use `requireMember()` (redirects), actions
   use `requireMemberForAction()` (throws). Don't reintroduce `auth()` in a
   page or action. `proxy.ts` still uses the DB-free `auth.config.ts`.
+- **The header shows the household's name**, not a product name —
+  `requireMember()` already returns `householdName`. It's the one place the
+  app should feel like theirs, and it's editable in Settings.
 - **Timezone is per household** (`households.timezone`), set in settings.
   `houseToday()` takes it as an argument — every call site must pass one, so
   a bare `houseToday()` is a bug. Server code gets it from

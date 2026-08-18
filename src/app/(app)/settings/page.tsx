@@ -1,5 +1,8 @@
+import { SlidersHorizontal } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { requireMember } from "@/lib/session";
+import { PageHeader } from "@/components/page-header";
 import { getMembersForSettings } from "@/db/queries/settings";
 import { listTimeZones } from "@/lib/timezones";
 import { HouseForm } from "./house-form";
@@ -13,10 +16,12 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">The house, who lives in it, and your own account.</p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="The house, who lives in it, and your own account."
+        icon={SlidersHorizontal}
+        accent="settings"
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
@@ -48,6 +53,18 @@ export default async function SettingsPage() {
         </div>
 
         <div className="min-w-0 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Appearance</CardTitle>
+              <CardDescription>
+                Light, dark, or whatever this device is set to. Saved on this device only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ThemeToggle />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Your profile</CardTitle>

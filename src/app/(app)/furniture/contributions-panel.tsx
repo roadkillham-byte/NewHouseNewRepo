@@ -58,7 +58,7 @@ export function ContributionsPanel({
     <div className="space-y-1.5 rounded bg-muted/50 p-2">
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{formatMoney(contributedCents)}</span>
+        <span className="numeric font-medium">{formatMoney(contributedCents)}</span>
       </div>
 
       {targetCents !== null && targetCents > 0 ? (

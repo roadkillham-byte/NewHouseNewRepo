@@ -1,5 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/member-avatar";
+import { PackageOpen } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import type { MoveInChecklistRow } from "@/db/queries/chores";
 import { CompleteButton, UndoButton } from "./instance-actions";
 
@@ -18,9 +20,11 @@ export function MoveInChecklist({ rows }: { rows: MoveInChecklistRow[] }) {
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nothing here yet — add a one-off chore to get started.
-          </p>
+          <EmptyState
+            icon={PackageOpen}
+            title="No move-in tasks yet"
+            hint="Add a one-off chore — utilities, internet, bond, mail redirection."
+          />
         ) : (
           <ul className="divide-y">
             {rows.map(({ definition, instance, assignee }) => (

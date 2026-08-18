@@ -4,6 +4,8 @@ import { useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { describeRule, parseRRuleToInput } from "@/lib/recurrence";
 import { formatMoney } from "@/lib/money";
 import type { BillDefinitionRow } from "@/db/queries/bills";
@@ -30,7 +32,11 @@ export function BillManagementList({ bills }: { bills: BillDefinitionRow[] }) {
       </CardHeader>
       <CardContent>
         {bills.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No bills yet — add the first one above.</p>
+          <EmptyState
+            icon={Receipt}
+            title="No bills yet"
+            hint="Add the first one and it'll appear on the timeline, split evenly."
+          />
         ) : (
           <ul className="divide-y">
             {bills.map((bill) => (

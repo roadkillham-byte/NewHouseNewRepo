@@ -1,6 +1,9 @@
-import { Badge } from "@/components/ui/badge";
+import { PartyPopper, Scale, Wallet } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/member-avatar";
+import { EmptyState } from "@/components/empty-state";
+import { StatusBadge } from "@/components/status-badge";
+import { PageHeader } from "@/components/page-header";
 import { requireMember } from "@/lib/session";
 import { formatMoney } from "@/lib/money";
 import { computeNetPositions, computeTransfers } from "@/lib/settlement";
@@ -27,12 +30,12 @@ export default async function SettlePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settle up</h1>
-        <p className="text-muted-foreground">
-          Everything paid so far, netted off into the fewest possible payments.
-        </p>
-      </div>
+      <PageHeader
+        title="Settle up"
+        description="Everything paid so far, netted off into the fewest possible payments."
+        icon={Scale}
+        accent="settle"
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
@@ -47,11 +50,15 @@ export default async function SettlePage() {
             </CardHeader>
             <CardContent>
               {transfers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {totalPot === 0
-                    ? "Nothing recorded yet. Mark a bill share paid or chip in on furniture and it'll show up here."
-                    : "All settled. 🎉"}
-                </p>
+                <EmptyState
+                  icon={totalPot === 0 ? Wallet : PartyPopper}
+                  title={totalPot === 0 ? "Nothing recorded yet" : "All settled"}
+                  hint={
+                    totalPot === 0
+                      ? "Mark a bill share paid or chip in on furniture and it'll show up here."
+                      : "Everyone has paid their fair share of the pot."
+                  }
+                />
               ) : (
                 <ul className="space-y-2">
                   {transfers.map((t, index) => (
@@ -64,7 +71,7 @@ export default async function SettlePage() {
                         <span className="text-muted-foreground">pays</span>
                         <span className="font-medium">{t.toName}</span>
                       </div>
-                      <span className="font-semibold">{formatMoney(t.amountCents)}</span>
+                      <span className="numeric font-semibold">{formatMoney(t.amountCents)}</span>
                     </li>
                   ))}
                 </ul>
@@ -88,7 +95,7 @@ export default async function SettlePage() {
                   >
                     <div>
                       <p className="text-sm font-medium">{position.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="numeric text-xs text-muted-foreground">
                         Paid {formatMoney(position.paidCents)} · fair share{" "}
                         {formatMoney(position.fairShareCents)}
                       </p>
@@ -108,7 +115,11 @@ export default async function SettlePage() {
           </CardHeader>
           <CardContent>
             {entries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing recorded yet.</p>
+              <EmptyState
+                icon={Wallet}
+                title="Nothing recorded yet"
+                hint="Every payment the house records lands here, newest first."
+              />
             ) : (
               <ul className="space-y-2.5">
                 {entries.map(({ entry, member }) => (
@@ -128,7 +139,7 @@ export default async function SettlePage() {
                         })}
                       </p>
                     </div>
-                    <span className="shrink-0 text-sm font-medium">
+                    <span className="numeric shrink-0 text-sm font-medium">
                       {formatMoney(entry.amountCents)}
                     </span>
                   </li>
@@ -143,9 +154,17 @@ export default async function SettlePage() {
 }
 
 function NetBadge({ netCents }: { netCents: number }) {
-  if (Math.abs(netCents) <= 1) return <Badge variant="outline">Square</Badge>;
+  if (Math.abs(netCents) <= 1) return <StatusBadge tone="settled">Square</StatusBadge>;
   if (netCents > 0) {
-    return <Badge variant="secondary">Owed {formatMoney(netCents)}</Badge>;
+    return (
+      <StatusBadge tone="neutral" className="numeric">
+        Owed {formatMoney(netCents)}
+      </StatusBadge>
+    );
   }
-  return <Badge variant="destructive">Owes {formatMoney(-netCents)}</Badge>;
+  return (
+    <StatusBadge tone="overdue" className="numeric">
+      Owes {formatMoney(-netCents)}
+    </StatusBadge>
+  );
 }

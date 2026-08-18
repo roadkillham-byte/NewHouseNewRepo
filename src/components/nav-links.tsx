@@ -5,13 +5,15 @@ import { usePathname } from "next/navigation";
 import { CalendarCheck, Home, Receipt, Scale, Settings, Sofa } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Accent classes are spelled out rather than interpolated, because Tailwind
+// only generates class names it can find as literals in the source.
 const LINKS = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/chores", label: "Chores", icon: CalendarCheck },
-  { href: "/bills", label: "Bills", icon: Receipt },
-  { href: "/furniture", label: "Furniture", icon: Sofa },
-  { href: "/settle", label: "Settle", icon: Scale },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/", label: "Home", icon: Home, accent: "text-primary" },
+  { href: "/chores", label: "Chores", icon: CalendarCheck, accent: "text-module-chores" },
+  { href: "/bills", label: "Bills", icon: Receipt, accent: "text-module-bills" },
+  { href: "/furniture", label: "Furniture", icon: Sofa, accent: "text-module-furniture" },
+  { href: "/settle", label: "Settle", icon: Scale, accent: "text-module-settle" },
+  { href: "/settings", label: "Settings", icon: Settings, accent: "text-module-settings" },
 ];
 
 function useIsActive() {
@@ -32,7 +34,7 @@ export function NavLinks() {
           className={cn(
             "rounded-md px-3 py-2 text-sm font-medium transition-colors",
             isActive(link.href)
-              ? "bg-accent text-accent-foreground"
+              ? cn("bg-accent", link.accent)
               : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
           )}
         >
@@ -63,7 +65,7 @@ export function BottomNav() {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex flex-col items-center gap-0.5 px-1 py-2 text-[11px] font-medium transition-colors",
-                  active ? "text-foreground" : "text-muted-foreground",
+                  active ? link.accent : "text-muted-foreground",
                 )}
               >
                 <Icon className={cn("size-5", active && "stroke-[2.5]")} aria-hidden />

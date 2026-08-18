@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/member-avatar";
+import { EmptyState } from "@/components/empty-state";
+import { StatusBadge } from "@/components/status-badge";
 import type { OutstandingChoreRow } from "@/db/queries/dashboard";
 import { CompleteButton } from "./chores/instance-actions";
 
@@ -29,9 +31,11 @@ export function ChoreCheckpoint({
       </CardHeader>
       <CardContent className="space-y-4">
         {chores.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Next ones will appear here as they fall due.
-          </p>
+          <EmptyState
+            icon={Sparkles}
+            title="Nothing outstanding"
+            hint="The next chores appear here as they fall due."
+          />
         ) : (
           <>
             {mine.length > 0 ? (
@@ -95,7 +99,7 @@ function ChoreRow({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {overdue ? <Badge variant="destructive">Overdue</Badge> : null}
+        {overdue ? <StatusBadge tone="overdue">Overdue</StatusBadge> : null}
         <CompleteButton instanceId={instance.id} />
       </div>
     </li>

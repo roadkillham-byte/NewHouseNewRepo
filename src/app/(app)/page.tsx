@@ -1,4 +1,5 @@
 import { requireMember } from "@/lib/session";
+import { PageHeader } from "@/components/page-header";
 import { houseToday } from "@/lib/today";
 import {
   getHouseStats,
@@ -32,20 +33,20 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {greeting()}, {firstName}
-        </h1>
-        <p className="text-muted-foreground">
-          {today.toLocaleDateString("en-AU", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          })}
-          {" · "}
-          {summaryLine(stats.choresPendingCount, personalOwedCents)}
-        </p>
-      </div>
+      <PageHeader
+        title={`${greeting()}, ${firstName}`}
+        description={
+          <>
+            {today.toLocaleDateString("en-AU", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+            {" · "}
+            {summaryLine(stats.choresPendingCount, personalOwedCents)}
+          </>
+        }
+      />
 
       <StatTiles
         choresPendingCount={stats.choresPendingCount}

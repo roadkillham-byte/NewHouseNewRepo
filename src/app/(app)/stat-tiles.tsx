@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 export function StatTiles({
   choresPendingCount,
@@ -22,6 +23,7 @@ export function StatTiles({
       value: formatMoney(personalOwedCents),
       hint: personalOwedCents === 0 ? "All settled" : "across unpaid shares",
       emphasis: personalOwedCents > 0,
+      accent: "text-module-bills",
     },
     {
       href: "/chores",
@@ -29,6 +31,7 @@ export function StatTiles({
       value: String(choresPendingCount),
       hint: choresPendingCount === 0 ? "All caught up" : "due today or overdue",
       emphasis: choresPendingCount > 0,
+      accent: "text-module-chores",
     },
     {
       href: "/bills",
@@ -36,6 +39,7 @@ export function StatTiles({
       value: formatMoney(unpaidTotalCents),
       hint: `${unpaidShareCount} share${unpaidShareCount === 1 ? "" : "s"} outstanding`,
       emphasis: false,
+      accent: "text-module-bills",
     },
     {
       href: "/furniture",
@@ -43,6 +47,7 @@ export function StatTiles({
       value: String(furnitureNeededCount),
       hint: furnitureNeededCount === 0 ? "Fully furnished" : "items not yet owned",
       emphasis: false,
+      accent: "text-module-furniture",
     },
   ];
 
@@ -52,12 +57,12 @@ export function StatTiles({
         <Link key={tile.label} href={tile.href} className="block">
           <Card className="transition-colors hover:bg-accent/40">
             <CardContent className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">{tile.label}</p>
+              <p className={cn("text-xs font-medium", tile.accent)}>{tile.label}</p>
               <p
-                className={
-                  "text-2xl font-semibold tracking-tight " +
-                  (tile.emphasis ? "text-foreground" : "text-foreground/80")
-                }
+                className={cn(
+                  "numeric font-heading text-2xl font-semibold tracking-tight",
+                  tile.emphasis ? "text-foreground" : "text-foreground/80",
+                )}
               >
                 {tile.value}
               </p>

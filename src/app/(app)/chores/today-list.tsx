@@ -1,6 +1,8 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/member-avatar";
+import { Coffee } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { StatusBadge } from "@/components/status-badge";
 import type { ChoreInstanceRow } from "@/db/queries/chores";
 import { CompleteButton, SkipButton, UndoButton } from "./instance-actions";
 
@@ -12,7 +14,11 @@ export function TodayList({ chores }: { chores: ChoreInstanceRow[] }) {
       </CardHeader>
       <CardContent>
         {chores.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing due today.</p>
+          <EmptyState
+            icon={Coffee}
+            title="Nothing due today"
+            hint="Enjoy it — tomorrow's chores are already scheduled."
+          />
         ) : (
           <ul className="divide-y">
             {chores.map(({ instance, definition, assignee }) => (
@@ -47,11 +53,11 @@ export function TodayList({ chores }: { chores: ChoreInstanceRow[] }) {
                     </>
                   ) : instance.status === "done" ? (
                     <>
-                      <Badge variant="secondary">Done</Badge>
+                      <StatusBadge tone="settled">Done</StatusBadge>
                       <UndoButton instanceId={instance.id} />
                     </>
                   ) : (
-                    <Badge variant="outline">Skipped</Badge>
+                    <StatusBadge tone="neutral">Skipped</StatusBadge>
                   )}
                 </div>
               </li>

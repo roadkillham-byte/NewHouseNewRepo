@@ -1,5 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/member-avatar";
+import { History } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import type { RecentActivityRow } from "@/db/queries/dashboard";
 
 export function RecentActivity({ rows }: { rows: RecentActivityRow[] }) {
@@ -11,7 +13,11 @@ export function RecentActivity({ rows }: { rows: RecentActivityRow[] }) {
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing completed yet this week.</p>
+          <EmptyState
+            icon={History}
+            title="Nothing done yet this week"
+            hint="Completed chores show up here for seven days."
+          />
         ) : (
           <ul className="space-y-2.5">
             {rows.map(({ instance, definition, completedBy }) => (
